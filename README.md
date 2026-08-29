@@ -1,22 +1,22 @@
 <div align="center">
 
-<img src="./drawio-view-demo.gif" alt="Draw.io View demo" width="720" />
+<img src="./diagram-view-demo.gif" alt="Diagram View demo" width="720" />
 
 <p>
   <b>🔍 Zoom &nbsp;·&nbsp; 🖱️ Pan &nbsp;·&nbsp; 📄 Multi-page &nbsp;·&nbsp; 🔗 Shape links &nbsp;·&nbsp; 🔎 Magnifier &nbsp;·&nbsp; 📦 Third-party libs &nbsp;·&nbsp; 🌙 Dark mode</b>
 </p>
 
 <p>
-  <a href="https://github.com/SdKay/obsidian-drawio-view/releases/latest">
-    <img src="https://img.shields.io/github/v/release/SdKay/obsidian-drawio-view?style=flat-square&color=7c3aed" alt="Latest release" />
+  <a href="https://github.com/SdKay/obsidian-diagram-view/releases/latest">
+    <img src="https://img.shields.io/github/v/release/SdKay/obsidian-diagram-view?style=flat-square&color=7c3aed" alt="Latest release" />
   </a>
-  <a href="https://github.com/SdKay/obsidian-drawio-view/releases">
-    <img src="https://img.shields.io/github/downloads/SdKay/obsidian-drawio-view/total?style=flat-square&color=brightgreen" alt="Total downloads" />
+  <a href="https://github.com/SdKay/obsidian-diagram-view/releases">
+    <img src="https://img.shields.io/github/downloads/SdKay/obsidian-diagram-view/total?style=flat-square&color=brightgreen" alt="Total downloads" />
   </a>
   <a href="LICENSE">
-    <img src="https://img.shields.io/github/license/SdKay/obsidian-drawio-view?style=flat-square" alt="License" />
+    <img src="https://img.shields.io/github/license/SdKay/obsidian-diagram-view?style=flat-square" alt="License" />
   </a>
-  <a href="https://obsidian.md/plugins?id=drawio-view">
+  <a href="https://obsidian.md/plugins?id=diagram-view">
     <img src="https://img.shields.io/badge/Obsidian-Community_Plugin-7c3aed?style=flat-square&logo=obsidian&logoColor=white" alt="Obsidian community plugin" />
   </a>
 </p>
@@ -43,36 +43,38 @@
 
 </div>
 
-Render [draw.io](https://www.drawio.com/) `.drawio` diagrams inline inside your Obsidian notes — with smooth zoom, pan, multi-page tabs, shape links, and full support for third-party shape libraries.
+Render diagrams inline inside your Obsidian notes — with smooth zoom, pan, multi-page tabs, shape links, and full support for third-party shape libraries. Today that means [draw.io](https://www.drawio.com/) `.drawio` files; more diagram formats are planned.
 
 ---
 
 ## Usage
 
-Place your `.drawio` file anywhere in the vault, then embed it with a fenced code block:
+Place your diagram file anywhere in the vault, then embed it with a fenced `dv` code block:
 
 ````markdown
-```drawio-view
-my-diagram.drawio
+```dv
+file=my-diagram.drawio
 ```
 ````
 
-You can optionally set the starting page, height, zoom, and pan offset:
+Every other field is an explicit `key=value` pair, separated by `|`, in any order:
 
 ````markdown
-```drawio-view
-my-diagram.drawio|my_page|600px|80%|(190, 34)
+```dv
+file=my-diagram.drawio|page=my_page|height=600|zoom=80|offset=190,34
 ```
 ````
 
-| Parameter | Format | Example | Description |
-|-----------|--------|---------|-------------|
-| Page | page name or `page-N` | `my_page` · `page-2` | Which page to display. Default: first page. |
-| Height | `Npx` | `600px` | Viewer height. Default: 400 px. |
-| Zoom | `N%` | `80%` | Initial zoom level. Default: auto-fit. |
-| Offset | `(X, Y)` | `(190, 34)` | Initial pan position. Default: centred. |
+| Key | Format | Example | Description |
+|-----|--------|---------|-------------|
+| `file` | `key=value` | `file=my-diagram.drawio` | Required. Vault-relative path or bare name. |
+| `page` | `key=value` | `page=my_page` | Which page to display, by exact name. Default: first page. |
+| `page-index` | `key=value` | `page-index=2` | Which page to display, by 1-based position. Ignored if `page=` is also set. |
+| `height` | `key=value` | `height=600` | Viewer height in pixels. Default: 400. |
+| `zoom` | `key=value` | `zoom=80` | Initial zoom level (%). Default: auto-fit. |
+| `offset` | `key=value` | `offset=190,34` | Initial pan position. Default: centred. |
 
-All parameters are optional and can appear in any order.
+Only `file=` is required; the rest can appear in any order.
 
 ---
 
@@ -82,7 +84,7 @@ If your diagram uses extended shape libraries (AWS, Azure, GCP, Cisco, Electrica
 
 Click **Download** — the missing libraries are fetched from draw.io's official repository, saved locally, and reused for all future diagrams. The banner also has a **Settings** shortcut if you prefer to manage libraries manually.
 
-Go to **Settings → Draw.io View → Shape Libraries** to:
+Go to **Settings → Diagram View → Shape Libraries** to:
 - Browse and download official libraries by category
 - Use **Auto-detect from vault** to find all libraries needed by your existing diagrams
 - Set a **custom folder** for your own shape files
@@ -138,11 +140,11 @@ The viewer automatically adapts to Obsidian's dark theme — no configuration ne
 ### Community plugin marketplace (recommended)
 
 1. **Settings → Community plugins → Browse**
-2. Search **draw.io view** → Install → Enable
+2. Search **Diagram View** → Install → Enable
 
 ### Manual
 
-Download `main.js`, `manifest.json`, and `styles.css` from the [latest release](https://github.com/SdKay/obsidian-drawio-view/releases/latest) and copy them to `<vault>/.obsidian/plugins/drawio-view/`.
+Download `main.js`, `manifest.json`, and `styles.css` from the [latest release](https://github.com/SdKay/obsidian-diagram-view/releases/latest) and copy them to `<vault>/.obsidian/plugins/diagram-view/`.
 
 ---
 
@@ -156,7 +158,7 @@ Download `main.js`, `manifest.json`, and `styles.css` from the [latest release](
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=SdKay/obsidian-drawio-view&type=Date)](https://star-history.com/#SdKay/obsidian-drawio-view&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=SdKay/obsidian-diagram-view&type=Date)](https://star-history.com/#SdKay/obsidian-diagram-view&Date)
 
 ---
 

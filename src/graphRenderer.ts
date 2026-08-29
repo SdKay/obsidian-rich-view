@@ -1,27 +1,16 @@
 import { Graph, ModelXmlSerializer, InternalEvent, type ShapeValue, type Cell } from '@maxgraph/core';
 import { registerBuiltinShapes } from './builtinShapes';
+import type { BoundingBox, DiagramRenderer, ShapeHit } from './diagramRenderer';
 
 // Register draw.io built-in JS shapes (curlyBracket etc.) once at module load.
 registerBuiltinShapes();
 
-export interface BoundingBox {
-	x: number;
-	y: number;
-	width: number;
-	height: number;
-}
-
 /**
  * Thin wrapper around @maxgraph/core's Graph for read-only diagram rendering.
- *
- * Coordinate conventions used in this class:
- *   - "graph coords": raw mxGraph units as stored in the .drawio file
- *   - "display offset": screen-pixel equivalent = graph-translate * scale
- *
- * The display-offset convention matches the original SVG-transform approach so
- * syntax values like `80%|(190, 34)` remain consistent.
+ * Implements DiagramRenderer — see that file for the coordinate conventions
+ * ("graph coords" vs "display offset") shared across renderer backends.
  */
-export class GraphRenderer {
+export class GraphRenderer implements DiagramRenderer {
 	private readonly graph: Graph;
 
 	constructor(container: HTMLElement) {
@@ -97,7 +86,7 @@ export class GraphRenderer {
 	}
 
 	/** Load (or replace) the diagram content from an mxGraphModel XML string. */
-	loadXml(xmlString: string): BoundingBox {
+	load(xmlString: string): BoundingBox {
 		// Detach during import so @maxgraph's attribute mutations happen off-tree
 		// (see withDetachedContainer) — without this the import fires a full
 		// MutationObserver storm that blocks the main thread on large diagrams.
@@ -110,7 +99,7 @@ export class GraphRenderer {
 	}
 
 	/**
-	 * Like loadXml but restores the current view after import.
+	 * Like load() but restores the current view after import.
 	 * Used for soft-reloads (external file edits) where the user's pan/zoom
 	 * position must be preserved.
 	 *
@@ -120,7 +109,7 @@ export class GraphRenderer {
 	 * Using setViewFromDisplay (same as normal rendering) recomputes the correct
 	 * graph-coord translate for the new model, keeping the visual position stable.
 	 */
-	loadXmlPreserveView(xmlString: string): BoundingBox {
+	loadPreserveView(xmlString: string): BoundingBox {
 		const scale = this.getScale();
 		const offset = this.getDisplayOffset();
 		// Do the import AND the view restore inside a single DOM-detach so both
@@ -285,7 +274,7 @@ export class GraphRenderer {
 	 * independently meaningful shape and must be highlighted on its own, not
 	 * expanded to the group's full bounding box.
 	 */
-	getShapeAt(px: number, py: number): { id: string; link: string | null; bounds: { x: number; y: number; w: number; h: number } } | null {
+	getShapeAt(px: number, py: number): ShapeHit | null {
 		const cell = this.graph.getCellAt(px, py);
 		if (!cell) return null;
 		const dm = this.graph.getDataModel();

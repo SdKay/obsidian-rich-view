@@ -1,5 +1,5 @@
 /* ── Viewer container ────────────────────────────────────── */
-.drawio-view-container {
+.diagram-view-container {
     display: flex;
     flex-direction: column;
     width: 100%;
@@ -13,7 +13,7 @@
 }
 
 /* ── Bottom-edge resize handle ───────────────────────────── */
-.drawio-view-resize-handle {
+.diagram-view-resize-handle {
     position: absolute;
     left: 0;
     right: 0;
@@ -29,17 +29,17 @@
     transition: opacity 0.12s ease;
 }
 
-.drawio-view-container:hover .drawio-view-resize-handle,
-.drawio-view-container.is-resizing .drawio-view-resize-handle {
+.diagram-view-container:hover .diagram-view-resize-handle,
+.diagram-view-container.is-resizing .diagram-view-resize-handle {
     opacity: 0.7;
 }
 
-.drawio-view-container .drawio-view-resize-handle:hover {
+.diagram-view-container .diagram-view-resize-handle:hover {
     opacity: 1;
 }
 
 /* ── Graph area ──────────────────────────────────────────── */
-.drawio-view-graph {
+.diagram-view-graph {
     position: relative;
     overflow: hidden;       /* the fixed clipping viewport */
     cursor: grab;
@@ -51,17 +51,17 @@
     touch-action: none;
 }
 
-.drawio-view-graph.has-link-hover {
+.diagram-view-graph.has-link-hover {
     cursor: pointer;
 }
 
-.drawio-view-graph.is-grabbing {
+.diagram-view-graph.is-grabbing {
     cursor: grabbing;
 }
 
 /* Inner pan layer that @maxgraph renders into; this is what gets CSS-translated.
    It overflows graphEl freely so off-screen content stays in the DOM. */
-.drawio-view-pan {
+.diagram-view-pan {
     position: absolute;
     inset: 0;
     overflow: visible;
@@ -73,35 +73,35 @@
 
 /* While panning, promote the pan layer to its own GPU compositor layer so that
    transform updates composite on the GPU without triggering repaints. */
-.drawio-view-pan.is-panning {
+.diagram-view-pan.is-panning {
     will-change: transform;
 }
 
 /* @maxgraph renders its own layers inside the pan element */
-.drawio-view-graph .drawio-view-pan > div,
-.drawio-view-graph .drawio-view-pan > svg {
+.diagram-view-graph .diagram-view-pan > div,
+.diagram-view-graph .diagram-view-pan > svg {
     background: transparent;
 }
 
 /* Ensure @maxgraph's SVG paints content beyond its nominal box so panned-away
-   cells remain rendered (clipped only by .drawio-view-graph). */
-.drawio-view-pan svg {
+   cells remain rendered (clipped only by .diagram-view-graph). */
+.diagram-view-pan svg {
     overflow: visible;
 }
 
 /* crispEdges on straight lines prevents half-pixel diagonal blur at
    non-integer zoom levels.  Excluded from path (used by curves/arcs)
    so rounded shapes like curlyBracket render smoothly. */
-.drawio-view-graph svg line,
-.drawio-view-graph svg polyline,
-.drawio-view-graph line,
-.drawio-view-graph polyline {
+.diagram-view-graph svg line,
+.diagram-view-graph svg polyline,
+.diagram-view-graph line,
+.diagram-view-graph polyline {
     shape-rendering: crispEdges;
 }
 
 /* ── Shape hover highlight ───────────────────────────────── */
 /* Lives inside panEl so it shares the diagram's CSS transform. */
-.drawio-view-highlight {
+.diagram-view-highlight {
     position: absolute;
     left: var(--dv-hl-x, 0px);
     top: var(--dv-hl-y, 0px);
@@ -115,14 +115,14 @@
     box-sizing: border-box;
 }
 
-.drawio-view-highlight.is-visible {
+.diagram-view-highlight.is-visible {
     display: block;
 }
 
 /* ── Magnifier (loupe) ───────────────────────────────────── */
 /* Sibling of panEl, inside graphEl — so it clips against graphEl's own
    overflow: hidden box near the viewport edges. */
-.drawio-view-magnifier {
+.diagram-view-magnifier {
     display: none;
     position: absolute;
     left: var(--dv-mag-x, 0px);
@@ -139,14 +139,14 @@
     z-index: 8;
 }
 
-.drawio-view-magnifier.is-active {
+.diagram-view-magnifier.is-active {
     display: block;
 }
 
 /* Re-scaled clone of panEl's live render, positioned so the point under the
    cursor lands at the circle's center (transform-origin does the anchoring —
    see applyMagnifierTransform() in viewer.ts). */
-.drawio-view-magnifier-viewport {
+.diagram-view-magnifier-viewport {
     position: absolute;
     left: var(--dv-mag-vp-left, 0px);
     top: var(--dv-mag-vp-top, 0px);
@@ -156,21 +156,21 @@
     transform: scale(var(--dv-mag-zoom, 2.5));
 }
 
-.drawio-view-graph.is-magnifying {
+.diagram-view-graph.is-magnifying {
     cursor: crosshair;
 }
 
 /* ── Dark theme ──────────────────────────────────────────── */
 /* Invert + hue-rotate so diagrams read naturally on dark backgrounds.
    Applied to the clipping viewport so border/HUD/tabs are unaffected. */
-.theme-dark .drawio-view-graph {
+.theme-dark .diagram-view-graph {
     filter: invert(1) hue-rotate(180deg);
 }
 
 /* ── HUD (apply button + status bar) ─────────────────────── */
-/* Sibling of .drawio-view-graph, absolutely placed within .drawio-view-container.
+/* Sibling of .diagram-view-graph, absolutely placed within .diagram-view-container.
    Stays clear of @maxgraph/core's internal HTML-label overlay layer. */
-.drawio-view-hud {
+.diagram-view-hud {
     position: absolute;
     bottom: 4px;
     right: 6px;
@@ -187,18 +187,18 @@
 }
 
 /* Lift the HUD above the 28 px tab bar. */
-.drawio-view-container.has-tabs .drawio-view-hud {
+.diagram-view-container.has-tabs .diagram-view-hud {
     bottom: 32px;
 }
 
-.drawio-view-hud .drawio-view-status {
+.diagram-view-hud .diagram-view-status {
     padding: 1px 5px;
     color: var(--text-muted);
     background: transparent;
 }
 
 /* ── Page tabs ───────────────────────────────────────────── */
-.drawio-view-tabs {
+.diagram-view-tabs {
     display: flex;
     flex-direction: row;
     flex-shrink: 0;
@@ -207,7 +207,7 @@
     background: var(--background-secondary);
 }
 
-.drawio-view-tab {
+.diagram-view-tab {
     flex-shrink: 0;
     padding: 0 10px;
     height: 28px;
@@ -222,24 +222,24 @@
     line-height: 28px;
 }
 
-.drawio-view-tab:hover {
+.diagram-view-tab:hover {
     background: var(--background-modifier-hover);
     color: var(--text-normal);
 }
 
-.drawio-view-tab.is-active {
+.diagram-view-tab.is-active {
     background: var(--background-primary);
     color: var(--text-normal);
     border-bottom: 2px solid var(--interactive-accent);
 }
 
-.drawio-view-tab:focus-visible {
+.diagram-view-tab:focus-visible {
     outline: 2px solid var(--interactive-accent);
     outline-offset: -2px;
 }
 
 /* ── Link tooltip ────────────────────────────────────────── */
-.drawio-view-link-tooltip {
+.diagram-view-link-tooltip {
     display: none;
     position: absolute;
     left: var(--dv-tip-x, 0px);
@@ -258,11 +258,11 @@
     z-index: 20;
 }
 
-.drawio-view-link-tooltip.is-visible {
+.diagram-view-link-tooltip.is-visible {
     display: flex;
 }
 
-.drawio-view-tooltip-text {
+.diagram-view-tooltip-text {
     display: none;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -270,29 +270,29 @@
     padding-left: 5px;
 }
 
-.drawio-view-tooltip-text.is-visible {
+.diagram-view-tooltip-text.is-visible {
     display: inline;
 }
 
-.drawio-view-tooltip-edit {
+.diagram-view-tooltip-edit {
     cursor: pointer;
     color: var(--text-faint);
     flex-shrink: 0;
     line-height: 1;
 }
 
-.drawio-view-tooltip-edit:hover {
+.diagram-view-tooltip-edit:hover {
     color: var(--interactive-accent);
 }
 
-.drawio-link-editor-path {
+.diagram-link-editor-path {
     display: block;
     color: var(--text-muted);
     font-size: var(--font-ui-smaller);
 }
 
 /* ── Missing libs banner ─────────────────────────────────── */
-.drawio-view-libs-banner {
+.diagram-view-libs-banner {
     display: none;
     position: absolute;
     top: 8px;
@@ -311,11 +311,11 @@
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
 }
 
-.drawio-view-libs-banner.is-visible {
+.diagram-view-libs-banner.is-visible {
     display: flex;
 }
 
-.drawio-libs-banner-msg {
+.diagram-libs-banner-msg {
     flex: 1;
     color: var(--text-normal);
     font-weight: var(--font-semibold);
@@ -324,22 +324,22 @@
     text-overflow: ellipsis;
 }
 
-.drawio-libs-banner-hint {
+.diagram-libs-banner-hint {
     color: var(--text-muted);
     font-weight: var(--font-normal);
 }
 
-.drawio-libs-banner-error {
+.diagram-libs-banner-error {
     color: var(--text-error);
 }
 
-.drawio-libs-banner-actions {
+.diagram-libs-banner-actions {
     display: flex;
     gap: 6px;
     flex-shrink: 0;
 }
 
-.drawio-libs-banner-btn {
+.diagram-libs-banner-btn {
     cursor: pointer;
     color: var(--text-muted);
     padding: 1px 6px;
@@ -349,35 +349,35 @@
     white-space: nowrap;
 }
 
-.drawio-libs-banner-btn:hover {
+.diagram-libs-banner-btn:hover {
     color: var(--text-normal);
     border-color: var(--interactive-accent);
 }
 
-.drawio-libs-banner-btn-primary {
+.diagram-libs-banner-btn-primary {
     color: var(--interactive-accent);
     border-color: var(--interactive-accent);
 }
 
-.drawio-libs-banner-btn-primary:hover {
+.diagram-libs-banner-btn-primary:hover {
     background: color-mix(in srgb, var(--interactive-accent) 10%, transparent);
 }
 
 /* ── Error ───────────────────────────────────────────────── */
-.drawio-view-error {
+.diagram-view-error {
     padding: 12px;
     color: var(--text-error);
     font-size: var(--font-ui-small);
 }
 
 /* ── "Apply view" button ─────────────────────────────────── */
-/* Lives inside .drawio-view-hud, left of the status text.
-   Prefix .drawio-view-hud gives enough specificity to beat Obsidian's
+/* Lives inside .diagram-view-hud, left of the status text.
+   Prefix .diagram-view-hud gives enough specificity to beat Obsidian's
    button base styles (e.g. button:not(.clickable-icon) { background: … }). */
-.drawio-view-hud .drawio-view-open-btn,
-.drawio-view-hud .drawio-view-fit-btn,
-.drawio-view-hud .drawio-view-magnifier-btn,
-.drawio-view-hud .drawio-view-update-btn {
+.diagram-view-hud .diagram-view-open-btn,
+.diagram-view-hud .diagram-view-fit-btn,
+.diagram-view-hud .diagram-view-magnifier-btn,
+.diagram-view-hud .diagram-view-update-btn {
     pointer-events: auto;
     background: transparent;
     border-right: 1px solid var(--background-modifier-border);
@@ -389,125 +389,28 @@
     user-select: none;
 }
 
-.drawio-view-hud .drawio-view-open-btn:hover,
-.drawio-view-hud .drawio-view-fit-btn:hover,
-.drawio-view-hud .drawio-view-magnifier-btn:hover,
-.drawio-view-hud .drawio-view-update-btn:hover {
+.diagram-view-hud .diagram-view-open-btn:hover,
+.diagram-view-hud .diagram-view-fit-btn:hover,
+.diagram-view-hud .diagram-view-magnifier-btn:hover,
+.diagram-view-hud .diagram-view-update-btn:hover {
     color: var(--interactive-accent);
     background: transparent;
 }
 
-.drawio-view-hud .drawio-view-open-btn:focus-visible,
-.drawio-view-hud .drawio-view-fit-btn:focus-visible,
-.drawio-view-hud .drawio-view-magnifier-btn:focus-visible,
-.drawio-view-hud .drawio-view-update-btn:focus-visible {
+.diagram-view-hud .diagram-view-open-btn:focus-visible,
+.diagram-view-hud .diagram-view-fit-btn:focus-visible,
+.diagram-view-hud .diagram-view-magnifier-btn:focus-visible,
+.diagram-view-hud .diagram-view-update-btn:focus-visible {
     outline: 2px solid var(--interactive-accent);
     outline-offset: -2px;
 }
 
-.drawio-view-hud .drawio-view-magnifier-btn.is-active {
+.diagram-view-hud .diagram-view-magnifier-btn.is-active {
     color: var(--interactive-accent);
-}
-
-/* ── Wiki-embed wrapper ──────────────────────────────────── */
-.drawio-view-embed-wrapper {
-    display: block;
-    width: 100%;
-}
-
-/* ── Stencil warning button ──────────────────────────────── */
-.drawio-view-stencil-btn {
-    display: none;
-    pointer-events: auto;
-    background: transparent;
-    border-right: 1px solid var(--background-modifier-border);
-    padding: 1px 6px;
-    cursor: pointer;
-    color: var(--color-orange);
-    font-size: var(--font-ui-smaller);
-    line-height: 1.4;
-    user-select: none;
-}
-
-.drawio-view-stencil-btn.is-visible {
-    display: inline;
-}
-
-.drawio-view-stencil-btn:hover {
-    color: var(--interactive-accent);
-}
-
-/* ── Stencil sync panel ──────────────────────────────────── */
-.drawio-view-stencil-panel {
-    display: none;
-    position: absolute;
-    bottom: 32px;
-    right: 6px;
-    background: var(--background-secondary);
-    border: 1px solid var(--background-modifier-border);
-    border-radius: var(--radius-s);
-    padding: 8px 10px;
-    z-index: 20;
-    min-width: 240px;
-    font-size: var(--font-ui-small);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-
-.drawio-view-container.has-tabs .drawio-view-stencil-panel {
-    bottom: 60px;
-}
-
-.drawio-view-stencil-panel.is-visible {
-    display: block;
-}
-
-.drawio-stencil-panel-title {
-    font-weight: var(--font-semibold);
-    margin-bottom: 6px;
-    color: var(--text-normal);
-}
-
-.drawio-stencil-panel-section {
-    color: var(--text-muted);
-    font-size: var(--font-ui-smaller);
-    margin: 6px 0 2px;
-}
-
-.drawio-stencil-panel-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    padding: 2px 0;
-    color: var(--text-normal);
-}
-
-.drawio-stencil-action-btn {
-    font-size: var(--font-ui-smaller);
-    padding: 1px 6px;
-    cursor: pointer;
-    color: var(--text-muted);
-    border: 1px solid var(--background-modifier-border);
-    border-radius: var(--radius-s);
-    white-space: nowrap;
-    user-select: none;
-}
-
-.drawio-stencil-action-btn:hover {
-    color: var(--interactive-accent);
-    border-color: var(--interactive-accent);
-}
-
-.drawio-stencil-fix-all {
-    margin-top: 8px;
-    width: 100%;
-    text-align: center;
-    display: block;
-    padding: 3px 0;
 }
 
 /* ── Settings: Shape Libraries section ───────────────────── */
-.drawio-libs-header {
+.diagram-libs-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -516,13 +419,13 @@
     color: var(--text-normal);
 }
 
-.drawio-libs-controls {
+.diagram-libs-controls {
     display: flex;
     gap: 6px;
     flex-wrap: wrap;
 }
 
-.drawio-libs-list {
+.diagram-libs-list {
     max-height: 320px;
     overflow-y: auto;
     border: 1px solid var(--background-modifier-border);
@@ -530,7 +433,7 @@
     padding: 4px 0;
 }
 
-.drawio-libs-category {
+.diagram-libs-category {
     font-size: var(--font-ui-smaller);
     color: var(--text-muted);
     padding: 4px 10px 2px;
@@ -539,7 +442,7 @@
     letter-spacing: 0.05em;
 }
 
-.drawio-lib-row {
+.diagram-lib-row {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -547,21 +450,21 @@
     font-size: var(--font-ui-small);
 }
 
-.drawio-lib-row:hover {
+.diagram-lib-row:hover {
     background: var(--background-modifier-hover);
 }
 
-.drawio-lib-name {
+.diagram-lib-name {
     flex: 1;
     color: var(--text-normal);
 }
 
-.drawio-lib-file {
+.diagram-lib-file {
     color: var(--text-faint);
     font-size: var(--font-ui-smaller);
 }
 
-.drawio-lib-badge {
+.diagram-lib-badge {
     font-size: 10px;
     padding: 1px 5px;
     border-radius: var(--radius-s);
@@ -570,7 +473,7 @@
     white-space: nowrap;
 }
 
-.drawio-lib-badge.is-downloaded {
+.diagram-lib-badge.is-downloaded {
     background: color-mix(in srgb, var(--color-green) 20%, transparent);
     color: var(--color-green);
 }

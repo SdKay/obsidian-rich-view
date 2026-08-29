@@ -1,7 +1,7 @@
 import { requestUrl, normalizePath } from 'obsidian';
 import type { DataAdapter, Vault } from 'obsidian';
 import { StencilShape, StencilShapeRegistry, ShapeRegistry } from '@maxgraph/core';
-import { parseDrawioFile } from './parser';
+import { parseDiagramFile } from './parser';
 
 // Module-level caches, live for the whole Obsidian session.
 const imageDataUriCache = new Map<string, string>();  // svg path → data URI
@@ -365,8 +365,8 @@ class StencilManager {
 		const found = new Set<string>();
 		for (const file of vault.getFiles().filter(f => f.extension === 'drawio')) {
 			const content = await vault.read(file);
-			const drawioFile = parseDrawioFile(content);
-			for (const page of drawioFile.pages) {
+			const diagramFile = parseDiagramFile(content);
+			for (const page of diagramFile.pages) {
 				for (const lib of this.detectUsedLibs(page.xml)) found.add(lib);
 				for (const ref of this.detectImageRefs(page.xml)) {
 					const cat = ref.split('/')[0];

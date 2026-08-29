@@ -1,7 +1,7 @@
 {
-    "name": "drawio-view",
+    "name": "diagram-view",
     "version": "0.0.12",
-    "description": "Render draw.io diagrams in Obsidian notes.",
+    "description": "Render draw.io (and, in future, other diagram formats) inline in Obsidian notes.",
     "main": "main.js",
     "type": "module",
     "scripts": {
@@ -14,9 +14,9 @@
     "author": "sdking.xing",
     "repository": {
         "type": "git",
-        "url": "https://github.com/SdKay/obsidian-drawio-view.git"
+        "url": "https://github.com/SdKay/obsidian-diagram-view.git"
     },
-    "homepage": "https://github.com/SdKay/obsidian-drawio-view",
+    "homepage": "https://github.com/SdKay/obsidian-diagram-view",
     "dependencies": {
         "@maxgraph/core": "^0.23.0",
         "pako": "^2.1.0"

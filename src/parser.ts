@@ -4,14 +4,14 @@ import { inflateRaw } from 'pako';
 // .drawio page model
 // ---------------------------------------------------------------------------
 
-export interface DrawioPage {
+export interface DiagramPage {
 	name: string;
 	id: string;
 	xml: string; // mxGraphModel XML string, ready for @maxgraph/core
 }
 
-export interface DrawioFile {
-	pages: DrawioPage[];
+export interface DiagramFile {
+	pages: DiagramPage[];
 	/** Set when the XML failed to parse; mirrors the message draw.io's own app shows. */
 	error?: string;
 }
@@ -24,16 +24,16 @@ export interface DrawioFile {
 // back into the code block) doesn't re-parse the XML.  Keyed by raw content;
 // holds only the most recent file to keep memory flat.
 let parseCacheKey = '';
-let parseCacheValue: DrawioFile | null = null;
+let parseCacheValue: DiagramFile | null = null;
 
-export function parseDrawioCached(content: string): DrawioFile {
+export function parseDiagramCached(content: string): DiagramFile {
 	if (parseCacheValue && parseCacheKey === content) return parseCacheValue;
-	parseCacheValue = parseDrawioFile(content);
+	parseCacheValue = parseDiagramFile(content);
 	parseCacheKey = content;
 	return parseCacheValue;
 }
 
-export function parseDrawioFile(content: string): DrawioFile {
+export function parseDiagramFile(content: string): DiagramFile {
 	const doc = new DOMParser().parseFromString(content, 'application/xml');
 	const parserError = doc.querySelector('parsererror');
 	if (parserError) return { pages: [], error: extractParserErrorMessage(parserError) };
@@ -94,7 +94,8 @@ function decodeCompressed(content: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// View-options parsing  e.g. "file.drawio|page-2|80%|(190,34)"
+// View-options parsing — explicit key=value pairs, e.g.:
+//   file=diagram.drawio|page=Overview|height=600|zoom=80|offset=190,34
 // ---------------------------------------------------------------------------
 
 export interface ViewOptions {
@@ -104,47 +105,73 @@ export interface ViewOptions {
 	zoom: number;         // percentage; 0 = auto-fit
 	offsetX: number;
 	offsetY: number;
-	offsetSpecified: boolean; // true only when (x,y) was explicitly written in syntax
+	offsetSpecified: boolean; // true only when offset= was explicitly written in syntax
 	height: number;       // container height in px; 0 = use CSS default (400px)
-	libs: string[];   // stencil library file stems to load (e.g. ['aws4', 'azure'])
 }
 
 const DEFAULTS: Omit<ViewOptions, 'filename'> = {
 	pageIndex: 0, pageName: '', zoom: 0, offsetX: 0, offsetY: 0, offsetSpecified: false,
 	height: 0,
-	libs: [],
 };
 
-export function parseViewParams(paramStr: string, filenameDefault = ''): ViewOptions {
-	const opts: ViewOptions = { filename: filenameDefault, ...DEFAULTS };
+/**
+ * Parses the `dv` code block's parameter line — explicit `key=value` pairs,
+ * e.g. `file=diagram.drawio|page=Overview|height=600|zoom=80|offset=190,34`.
+ *
+ * Deliberately NOT shape-sniffed (the previous format guessed a bare token's
+ * meaning from what it looked like, e.g. `page-2` → page index, `80%` →
+ * zoom): a page can legitimately be *named* "Page-2" or "80" — that's
+ * Visio's own default page-naming scheme — and shape-sniffing would silently
+ * misfile it as a page index or a zoom level instead of a name lookup.
+ * `page=` is therefore always a literal, exact name match; use the separate
+ * `page-index=` key (1-based) to select by position when the name is
+ * unknown or irrelevant.
+ */
+export function parseViewParams(paramStr: string): ViewOptions {
+	const opts: ViewOptions = { filename: '', ...DEFAULTS };
 	if (!paramStr.trim()) return opts;
 
-	// Split on both '|' and newlines so libs: can live on its own line.
 	for (const raw of paramStr.split(/[|\n\r]+/).map(s => s.trim()).filter(Boolean)) {
-		if (/\.(drawio|xml)$/i.test(raw)) {
-			opts.filename = raw;
-		} else if (/^page[-\s]?(\d+)$/i.test(raw)) {
-			// page-N / page N → 0-based index
-			const m = raw.match(/(\d+)/);
-			if (m) opts.pageIndex = parseInt(m[1]!) - 1;
-		} else if (/^(\d+(?:\.\d+)?)%$/.test(raw)) {
-			opts.zoom = parseFloat(raw);
-		} else if (/^libs:/i.test(raw)) {
-			// Accept "libs:aws4,azure" or "libs: aws4, azure"
-			opts.libs = raw.replace(/^libs:\s*/i, '').split(',').map(s => s.trim()).filter(Boolean);
-		} else {
-			const offsetM = raw.match(/^\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)$/);
-			if (offsetM) {
-				opts.offsetX = parseFloat(offsetM[1]!);
-				opts.offsetY = parseFloat(offsetM[2]!);
-				opts.offsetSpecified = true;
-			} else if (/^\d+px$/i.test(raw)) {
-				// Height: "600px"
-				opts.height = parseInt(raw);
-			} else {
-				// Treat as page name (e.g. "my_page", "第 1 页")
-				opts.pageName = raw;
+		const eq = raw.indexOf('=');
+		if (eq === -1) continue; // ignore unrecognised bare tokens
+		const key = raw.slice(0, eq).trim().toLowerCase();
+		const value = raw.slice(eq + 1).trim();
+		if (!value) continue;
+
+		switch (key) {
+			case 'file':
+				opts.filename = value;
+				break;
+			case 'page':
+				opts.pageName = value;
+				break;
+			case 'page-index': {
+				const n = parseInt(value, 10);
+				if (!isNaN(n) && n > 0) opts.pageIndex = n - 1;
+				break;
 			}
+			case 'zoom': {
+				const n = parseFloat(value);
+				if (!isNaN(n)) opts.zoom = n;
+				break;
+			}
+			case 'height': {
+				const n = parseInt(value, 10);
+				if (!isNaN(n)) opts.height = n;
+				break;
+			}
+			case 'offset': {
+				const m = value.match(/^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/);
+				if (m) {
+					opts.offsetX = parseFloat(m[1]!);
+					opts.offsetY = parseFloat(m[2]!);
+					opts.offsetSpecified = true;
+				}
+				break;
+			}
+			// Unknown keys are ignored rather than treated as an error — keeps
+			// the door open for future format-specific fields without breaking
+			// old code blocks.
 		}
 	}
 	return opts;

@@ -1,65 +1,76 @@
 ---
-name: obsidian-drawio-view
+name: obsidian-diagram-view
 description: >
-  Insert and manage draw.io diagrams in Obsidian vault notes using the
-  drawio-view plugin. Use when the user asks to embed, view, or configure
-  a .drawio diagram in a note.
+  Insert and manage diagrams (draw.io today; more formats planned) in
+  Obsidian vault notes using the diagram-view plugin. Use when the user
+  asks to embed, view, or configure a diagram in a note.
 ---
 
-# Draw.io View — Agent Reference
+# Diagram View — Agent Reference
 
-`drawio-view` is an Obsidian plugin that renders `.drawio` diagrams inline
-inside fenced code blocks.
+`diagram-view` is an Obsidian plugin that renders diagrams inline inside
+fenced `dv` code blocks. Today that means `.drawio` files; the parser/renderer
+layer is split so other formats (e.g. Visio) can be added later without
+changing this syntax.
 
-> **Obsidian-only.** The `drawio-view` block will not render in standard
-> Markdown editors or GitHub previews.
+> **Obsidian-only.** The `dv` block will not render in standard Markdown
+> editors or GitHub previews.
 
 ---
 
 ## Block syntax
 
 ````markdown
-```drawio-view
-filename.drawio
+```dv
+file=filename.drawio
 ```
 ````
 
-All parameters are optional and can appear in any order, separated by `|`:
+Parameters are explicit `key=value` pairs, separated by `|`, in any order.
+`file=` is the only required one:
 
 ````markdown
-```drawio-view
-filename.drawio|<page>|<height>|<zoom>|<offset>
+```dv
+file=filename.drawio|page=<name>|page-index=<N>|height=<px>|zoom=<percent>|offset=<x>,<y>
 ```
 ````
 
-| Parameter | Format | Example | Description |
-|-----------|--------|---------|-------------|
-| Filename | `*.drawio` | `diagram.drawio` | Required. Vault-relative path or bare name. |
-| Page | page name or `page-N` | `my_page` · `page-2` | Which page to show. Default: first page. |
-| Height | `Npx` | `600px` | Viewer height in pixels. Default: 400px. |
-| Zoom | `N%` | `80%` | Initial zoom level. Default: auto-fit. |
-| Offset | `(X, Y)` | `(190, 34)` | Initial pan position in display pixels. Default: centred. |
+| Key | Format | Example | Description |
+|-----|--------|---------|-------------|
+| `file` | `key=value` | `file=diagram.drawio` | Required. Vault-relative path or bare name. |
+| `page` | `key=value` | `page=Backend` | Which page to show, by **exact name**. Default: first page. |
+| `page-index` | `key=value` | `page-index=2` | Which page to show, by 1-based position. Ignored if `page=` is also set. |
+| `height` | `key=value` | `height=600` | Viewer height in pixels. Default: 400. |
+| `zoom` | `key=value` | `zoom=80` | Initial zoom percentage. Default: auto-fit. |
+| `offset` | `key=value` | `offset=190,34` | Initial pan position in display pixels. Default: centred. |
+
+There is no bare/positional form — every field needs its key. This is
+deliberate: a page can legitimately be *named* "Page-2" or "80" (Visio's own
+default page names look exactly like that), and a positional/shape-guessed
+format would misfile it as a page index or a zoom level instead of a name.
+`page=` is always an exact literal name match; `page-index=` is the
+by-position fallback.
 
 ### Examples
 
 Minimal — just the filename:
 ````markdown
-```drawio-view
-architecture.drawio
+```dv
+file=architecture.drawio
 ```
 ````
 
 Specific page, fixed height:
 ````markdown
-```drawio-view
-architecture.drawio|backend|500px
+```dv
+file=architecture.drawio|page=Backend|height=500
 ```
 ````
 
 Saved view with zoom and offset (written by the ⊙ button):
 ````markdown
-```drawio-view
-architecture.drawio|backend|500px|80%|(190, 34)
+```dv
+file=architecture.drawio|page=Backend|height=500|zoom=80|offset=190,34
 ```
 ````
 
@@ -73,18 +84,19 @@ architecture.drawio|backend|500px|80%|(190, 34)
 
 ```
 old_string: "## Architecture\n\n"
-new_string: "## Architecture\n\n```drawio-view\narchitecture.drawio\n```\n\n"
+new_string: "## Architecture\n\n```dv\nfile=architecture.drawio\n```\n\n"
 ```
 
-The `.drawio` file must already exist in the vault. If it does not exist,
-tell the user to create it in draw.io and place it in the vault first.
+The diagram file must already exist in the vault. If it does not exist,
+tell the user to create it (in draw.io, for `.drawio` files) and place it in
+the vault first.
 
 ---
 
 ## Filename resolution
 
-- Vault-absolute paths work directly: `diagrams/arch.drawio`
-- Bare names (`arch.drawio`) are resolved via Obsidian's link cache —
+- Vault-absolute paths work directly: `file=diagrams/arch.drawio`
+- Bare names (`file=arch.drawio`) are resolved via Obsidian's link cache —
   they match regardless of folder.
 - Use `normalizePath` conventions: forward slashes, no leading slash.
 
@@ -93,14 +105,15 @@ tell the user to create it in draw.io and place it in the vault first.
 ## Updating parameters
 
 To change a parameter (e.g. switch to a different page or set a fixed height),
-read the file, locate the `drawio-view` block, and replace the parameter line:
+read the file, locate the `dv` block, and replace the whole parameter line —
+every field is independent, so add/remove/edit keys freely:
 
 ```
-old_string: "```drawio-view\narchitecture.drawio\n```"
-new_string: "```drawio-view\narchitecture.drawio|backend|600px\n```"
+old_string: "```dv\nfile=architecture.drawio\n```"
+new_string: "```dv\nfile=architecture.drawio|page=Backend|height=600\n```"
 ```
 
-Do **not** add a `libs:` line — the plugin manages shape libraries automatically.
+Do **not** add a `libs=` field — the plugin manages shape libraries automatically.
 
 ---
 
@@ -120,17 +133,18 @@ Do **not** add a `libs:` line — the plugin manages shape libraries automatical
 
 ## Shape links (read / write)
 
-Shapes in a diagram can carry links to vault notes or external URLs. These
-are stored inside the `.drawio` XML, not in the code block. The plugin's
-`✎` button lets users edit links interactively — agents do not need to
-manipulate the XML directly.
+Shapes in a `.drawio` diagram can carry links to vault notes or external
+URLs. These are stored inside the file itself, not in the code block. The
+plugin's `✎` button lets users edit links interactively — agents do not need
+to manipulate the underlying XML directly.
 
 ---
 
 ## When NOT to use this skill
 
 - If the user wants to **create or edit** the diagram content (shapes,
-  connectors, text), they must use draw.io desktop. This plugin is a
-  **viewer only** — it does not support editing diagram content.
-- If the file is not a `.drawio` file (e.g. an SVG or PNG), use a standard
-  Markdown image embed instead.
+  connectors, text), they must use the diagram's native editor (e.g. draw.io
+  desktop for `.drawio` files). This plugin is a **viewer only** — it does
+  not support editing diagram content.
+- If the file is not a supported diagram format (currently only `.drawio`;
+  e.g. an SVG or PNG), use a standard Markdown image embed instead.

@@ -1,5 +1,5 @@
 import { Component } from 'obsidian';
-import type { DrawioViewSettings } from './settings';
+import type { DiagramViewSettings } from './settings';
 
 /**
  * Bridge to the committed @maxgraph view.  The controller owns the *uncommitted*
@@ -67,7 +67,7 @@ export class PanZoomController extends Component {
 		private readonly graphEl: HTMLElement,
 		private readonly panEl: HTMLElement,
 		private readonly host: ViewportHost,
-		private readonly getSettings: () => DrawioViewSettings,
+		private readonly getSettings: () => DiagramViewSettings,
 	) {
 		super();
 	}

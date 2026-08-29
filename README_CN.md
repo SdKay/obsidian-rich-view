@@ -1,22 +1,22 @@
 <div align="center">
 
-<img src="./drawio-view-demo.gif" alt="Draw.io View 演示" width="720" />
+<img src="./diagram-view-demo.gif" alt="Diagram View 演示" width="720" />
 
 <p>
   <b>🔍 缩放 &nbsp;·&nbsp; 🖱️ 平移 &nbsp;·&nbsp; 📄 多页 &nbsp;·&nbsp; 🔗 图形链接 &nbsp;·&nbsp; 🔎 放大镜 &nbsp;·&nbsp; 📦 三方图形库 &nbsp;·&nbsp; 🌙 深色模式</b>
 </p>
 
 <p>
-  <a href="https://github.com/SdKay/obsidian-drawio-view/releases/latest">
-    <img src="https://img.shields.io/github/v/release/SdKay/obsidian-drawio-view?style=flat-square&color=7c3aed" alt="最新版本" />
+  <a href="https://github.com/SdKay/obsidian-diagram-view/releases/latest">
+    <img src="https://img.shields.io/github/v/release/SdKay/obsidian-diagram-view?style=flat-square&color=7c3aed" alt="最新版本" />
   </a>
-  <a href="https://github.com/SdKay/obsidian-drawio-view/releases">
-    <img src="https://img.shields.io/github/downloads/SdKay/obsidian-drawio-view/total?style=flat-square&color=brightgreen" alt="总下载量" />
+  <a href="https://github.com/SdKay/obsidian-diagram-view/releases">
+    <img src="https://img.shields.io/github/downloads/SdKay/obsidian-diagram-view/total?style=flat-square&color=brightgreen" alt="总下载量" />
   </a>
   <a href="LICENSE">
-    <img src="https://img.shields.io/github/license/SdKay/obsidian-drawio-view?style=flat-square" alt="许可证" />
+    <img src="https://img.shields.io/github/license/SdKay/obsidian-diagram-view?style=flat-square" alt="许可证" />
   </a>
-  <a href="https://obsidian.md/plugins?id=drawio-view">
+  <a href="https://obsidian.md/plugins?id=diagram-view">
     <img src="https://img.shields.io/badge/Obsidian-社区插件-7c3aed?style=flat-square&logo=obsidian&logoColor=white" alt="Obsidian 社区插件" />
   </a>
 </p>
@@ -43,36 +43,38 @@
 
 </div>
 
-在 Obsidian 笔记中内嵌渲染 [draw.io](https://www.drawio.com/) `.drawio` 图表——支持流畅缩放平移、多页标签、图形链接，以及完整的三方图形库支持。
+在 Obsidian 笔记中内嵌渲染图表——支持流畅缩放平移、多页标签、图形链接，以及完整的三方图形库支持。目前支持 [draw.io](https://www.drawio.com/) `.drawio` 文件，未来会支持更多图表格式。
 
 ---
 
 ## 使用方法
 
-将 `.drawio` 文件放在 vault 任意位置，用围栏代码块嵌入：
+将图表文件放在 vault 任意位置，用围栏 `dv` 代码块嵌入：
 
 ````markdown
-```drawio-view
-my-diagram.drawio
+```dv
+file=my-diagram.drawio
 ```
 ````
 
-可选参数用 `|` 分隔，设置起始页面、高度、缩放和平移位置：
+其他字段都是显式的 `key=value`，用 `|` 分隔，顺序任意：
 
 ````markdown
-```drawio-view
-my-diagram.drawio|my_page|600px|80%|(190, 34)
+```dv
+file=my-diagram.drawio|page=my_page|height=600|zoom=80|offset=190,34
 ```
 ````
 
 | 参数 | 格式 | 示例 | 说明 |
 |------|------|------|------|
-| 页面 | 页面名或 `page-N` | `my_page` · `page-2` | 显示哪一页，默认第一页 |
-| 高度 | `Npx` | `600px` | 查看器高度，默认 400px |
-| 缩放 | `N%` | `80%` | 初始缩放比例，默认自动适应 |
-| 偏移 | `(X, Y)` | `(190, 34)` | 初始平移位置，默认居中 |
+| `file` | `key=value` | `file=my-diagram.drawio` | 必填，vault 相对路径或裸文件名 |
+| `page` | `key=value` | `page=my_page` | 按**精确名称**指定显示哪一页，默认第一页 |
+| `page-index` | `key=value` | `page-index=2` | 按 1-based 位置指定页面；同时写了 `page=` 时忽略此项 |
+| `height` | `key=value` | `height=600` | 查看器高度（像素），默认 400 |
+| `zoom` | `key=value` | `zoom=80` | 初始缩放百分比，默认自动适应 |
+| `offset` | `key=value` | `offset=190,34` | 初始平移位置，默认居中 |
 
-所有参数均可省略，顺序任意。
+只有 `file=` 是必填的，其他字段都可以省略。
 
 ---
 
@@ -82,7 +84,7 @@ my-diagram.drawio|my_page|600px|80%|(190, 34)
 
 点击 **Download**，缺失的图形库会从 draw.io 官方仓库下载到本地，后续所有图表直接复用，无需再次下载。横幅上还有 **Settings** 快捷入口，方便手动管理。
 
-进入**设置 → Draw.io View → Shape Libraries** 可以：
+进入**设置 → Diagram View → Shape Libraries** 可以：
 - 按分类浏览并下载官方图形库
 - 点击 **Auto-detect from vault** 扫描 vault 中所有 `.drawio` 文件，一键检测所需图形库
 - 设置**自定义图形库目录**，放入自己的图形文件后自动加载
@@ -138,11 +140,11 @@ Obsidian 切换深色主题时，查看器自动适配，无需任何配置。
 ### 社区插件市场（推荐）
 
 1. **设置 → 社区插件 → 浏览**
-2. 搜索 **draw.io view** → 安装 → 启用
+2. 搜索 **Diagram View** → 安装 → 启用
 
 ### 手动安装
 
-从[最新 Release](https://github.com/SdKay/obsidian-drawio-view/releases/latest) 下载 `main.js`、`manifest.json`、`styles.css`，复制到 `<vault>/.obsidian/plugins/drawio-view/`。
+从[最新 Release](https://github.com/SdKay/obsidian-diagram-view/releases/latest) 下载 `main.js`、`manifest.json`、`styles.css`，复制到 `<vault>/.obsidian/plugins/diagram-view/`。
 
 ---
 
@@ -156,7 +158,7 @@ Obsidian 切换深色主题时，查看器自动适配，无需任何配置。
 
 ## Star 历史
 
-[![Star History Chart](https://api.star-history.com/svg?repos=SdKay/obsidian-drawio-view&type=Date)](https://star-history.com/#SdKay/obsidian-drawio-view&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=SdKay/obsidian-diagram-view&type=Date)](https://star-history.com/#SdKay/obsidian-diagram-view&Date)
 
 ---
 
