@@ -7,9 +7,14 @@
     "scripts": {
         "dev": "node esbuild.config.mjs",
         "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
-        "lint": "eslint ."
+        "lint": "eslint .",
+        "test": "vitest run"
     },
-    "keywords": ["obsidian", "drawio", "diagram"],
+    "keywords": [
+        "obsidian",
+        "drawio",
+        "diagram"
+    ],
     "license": "MIT",
     "author": "sdking.xing",
     "repository": {
@@ -19,6 +24,7 @@
     "homepage": "https://github.com/SdKay/obsidian-diagram-view",
     "dependencies": {
         "@maxgraph/core": "^0.23.0",
+        "fflate": "^0.8.3",
         "pako": "^2.1.0"
     },
     "devDependencies": {
@@ -30,8 +36,10 @@
         "eslint-plugin-obsidianmd": "^0.3.0",
         "globals": "^17.6.0",
         "jiti": "^2.6.1",
+        "jsdom": "^30.0.1",
         "obsidian": "latest",
         "typescript": "^5.8.3",
-        "typescript-eslint": "^8.59.1"
+        "typescript-eslint": "^8.59.1",
+        "vitest": "^4.1.11"
     }
 }

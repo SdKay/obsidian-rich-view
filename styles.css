@@ -477,3 +477,12 @@
     background: color-mix(in srgb, var(--color-green) 20%, transparent);
     color: var(--color-green);
 }
+
+/* ── Visio (.vsdx) SVG renderer ──────────────────────────── */
+.diagram-view-visio-svg {
+    display: block;
+}
+
+.diagram-view-visio-text {
+    pointer-events: none;
+}

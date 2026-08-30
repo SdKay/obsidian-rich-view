@@ -1,19 +1,46 @@
 import { App, Component, setTooltip, TFile } from 'obsidian';
 import { stencilManager, OFFICIAL_LIBS } from './stencilManager';
 import { parseDiagramCached, type ViewOptions, type DiagramPage } from './parser';
+import { parseVisioFile, type VisioPage } from './visioParser';
 import { GraphRenderer } from './graphRenderer';
+import { VisioRenderer } from './visioRenderer';
 import type { DiagramRenderer, BoundingBox } from './diagramRenderer';
 import type { DiagramViewSettings } from './settings';
 import { LinkEditorModal, patchCellLink } from './linkEditor';
 import { PanZoomController, type ViewportHost } from './viewportController';
 import { t } from './i18n';
 
-// Module-level cache of .drawio file CONTENT keyed by path.  Crucial for a
+/** Either format's page — both carry a `name` for tabs/param-string purposes. */
+type AnyPage = DiagramPage | VisioPage;
+
+/**
+ * .drawio files are read as text; .vsdx (a ZIP/OOXML container) must be read
+ * as binary via vault.readBinary(). Every content-cache/diffing/render path
+ * below has to handle both.
+ */
+type FileContent = string | ArrayBuffer;
+
+function isBinaryDiagramFormat(file: TFile): boolean {
+	return file.extension.toLowerCase() === 'vsdx';
+}
+
+function contentEquals(a: FileContent, b: FileContent): boolean {
+	if (typeof a === 'string' || typeof b === 'string') return a === b;
+	if (a.byteLength !== b.byteLength) return false;
+	const va = new Uint8Array(a);
+	const vb = new Uint8Array(b);
+	for (let i = 0; i < va.length; i++) {
+		if (va[i] !== vb[i]) return false;
+	}
+	return true;
+}
+
+// Module-level cache of diagram file CONTENT keyed by path.  Crucial for a
 // flash-free re-render: when the ⊙ button writes view params into the .md file,
-// Obsidian rebuilds the code block, but the .drawio file itself is unchanged —
+// Obsidian rebuilds the code block, but the diagram file itself is unchanged —
 // so the new viewer can paint synchronously from this cache (no async vault
 // read gap, which is what caused the blank-flash) and verify in the background.
-const contentCache = new Map<string, string>();
+const contentCache = new Map<string, FileContent>();
 
 export class DiagramViewer extends Component {
 	private readonly app: App;
@@ -24,7 +51,9 @@ export class DiagramViewer extends Component {
 	/** Called when the user clicks "apply current view to code block". */
 	private readonly onUpdate: ((newParams: string) => Promise<void>) | null;
 
-	private pages: DiagramPage[] = [];
+	private pages: AnyPage[] = [];
+	/** Set from renderFromContent(): true for a .vsdx page tree, false for .drawio. */
+	private isVisio = false;
 	private currentPage = 0;
 	private currentBbox: BoundingBox = { x: 0, y: 0, width: 400, height: 300 };
 
@@ -124,25 +153,37 @@ export class DiagramViewer extends Component {
 		);
 	}
 
+	/** Read a diagram file as text (.drawio) or binary (.vsdx), as appropriate. */
+	private readFileContent(file: TFile): Promise<FileContent> {
+		return isBinaryDiagramFormat(file) ? this.app.vault.readBinary(file) : this.app.vault.read(file);
+	}
+
 	/**
-	 * Reload a modified .drawio file.  Uses a soft-reload (only re-parses and
-	 * re-loads the XML into the existing renderer) when the page count is
-	 * unchanged, which avoids rebuilding the entire DOM and is much faster.
-	 * Falls back to a full rebuild only when the structure actually changed.
+	 * Reload a modified diagram file.  For .drawio, uses a soft-reload (only
+	 * re-parses and re-loads the XML into the existing renderer) when the page
+	 * count is unchanged, which avoids rebuilding the entire DOM and is much
+	 * faster; falls back to a full rebuild only when the structure actually
+	 * changed. .vsdx has no renderer/soft-reload path yet, so it always goes
+	 * through a full rebuild.
 	 */
 	private async reloadFile(file: TFile): Promise<void> {
 		try {
-			const content = await this.app.vault.read(file);
+			const content = await this.readFileContent(file);
 			const prev = contentCache.get(file.path);
-			if (content === prev) return;          // no change
+			if (prev !== undefined && contentEquals(content, prev)) return; // no change
 			contentCache.set(file.path, content);
+
+			if (typeof content !== 'string') {
+				this.renderFromContent(content);
+				return;
+			}
 
 			const diagram = parseDiagramCached(content);
 
 			// Soft-reload: same number of pages and renderer already exists.
 			if (this.renderer && diagram.pages.length === this.pages.length) {
 				this.pages = diagram.pages;
-				const page = this.pages[this.currentPage];
+				const page = diagram.pages[this.currentPage];
 				if (page) {
 					this.controller?.clearVisual();
 					const processedXml = await this.prepareForRender(page.xml);
@@ -162,10 +203,10 @@ export class DiagramViewer extends Component {
 	}
 
 	/** Read the file fresh and re-render if its content differs from the cache. */
-	private async verifyAndRender(file: TFile, cached: string | undefined): Promise<void> {
+	private async verifyAndRender(file: TFile, cached: FileContent | undefined): Promise<void> {
 		try {
-			const content = await this.app.vault.read(file);
-			if (content === cached) return;            // unchanged → nothing to do
+			const content = await this.readFileContent(file);
+			if (cached !== undefined && contentEquals(content, cached)) return; // unchanged → nothing to do
 			contentCache.set(file.path, content);
 			this.renderFromContent(content);
 		} catch (err) {
@@ -181,11 +222,8 @@ export class DiagramViewer extends Component {
 		this.renderer = null;
 	}
 
-	/** (Re)build the viewer from raw .drawio file content. */
-	private renderFromContent(content: string): void {
-		const diagram = parseDiagramCached(content);
-		this.pages = diagram.pages;
-
+	/** (Re)build the viewer from raw diagram file content (.drawio text or .vsdx binary). */
+	private renderFromContent(content: FileContent): void {
 		// Clear any previous render (e.g. background re-render after a change).
 		this.renderer?.destroy();
 		this.renderer = null;
@@ -193,19 +231,37 @@ export class DiagramViewer extends Component {
 		this.container.empty();
 		this.graphEl = this.panEl = this.statusEl = this.tabsEl = null;
 
-		if (this.pages.length === 0) {
-			this.container.createDiv({ cls: 'diagram-view-error', text: diagram.error ?? 'No diagrams found.' });
-			return;
+		this.isVisio = typeof content !== 'string';
+
+		if (this.isVisio) {
+			const visio = parseVisioFile(content as ArrayBuffer);
+			this.pages = visio.pages;
+			if (this.pages.length === 0) {
+				this.container.createDiv({ cls: 'diagram-view-error', text: visio.error ?? 'No pages found.' });
+				return;
+			}
+		} else {
+			const diagram = parseDiagramCached(content as string);
+			this.pages = diagram.pages;
+			if (this.pages.length === 0) {
+				this.container.createDiv({ cls: 'diagram-view-error', text: diagram.error ?? 'No diagrams found.' });
+				return;
+			}
 		}
-		// Resolve page: by name first, then by index.
+
+		this.currentPage = this.resolvePageIndex();
+		this.buildLayout();
+		void this.renderCurrentPage();
+	}
+
+	/** Resolve the target page: by name first (exact match), then by 1-based index. */
+	private resolvePageIndex(): number {
 		let targetIdx = this.options.pageIndex;
 		if (this.options.pageName) {
 			const named = this.pages.findIndex(p => p.name === this.options.pageName);
 			if (named !== -1) targetIdx = named;
 		}
-		this.currentPage = Math.max(0, Math.min(targetIdx, this.pages.length - 1));
-		this.buildLayout();
-		void this.renderCurrentPage();
+		return Math.max(0, Math.min(targetIdx, this.pages.length - 1));
 	}
 
 	private resolveFile(filename: string): TFile | null {
@@ -438,7 +494,7 @@ export class DiagramViewer extends Component {
 
 		// Create renderer + controller once (into panEl); reuse for page switches.
 		if (!this.renderer) {
-			this.renderer = new GraphRenderer(panEl);
+			this.renderer = this.isVisio ? new VisioRenderer(panEl) : new GraphRenderer(panEl);
 			this.renderer.onViewChange(() => this.updateStatus());
 			const host: ViewportHost = {
 				getCommittedScale: () => this.renderer?.getScale() ?? 1,
@@ -454,14 +510,22 @@ export class DiagramViewer extends Component {
 		// Reset the visual CSS transform when (re)loading a page.
 		this.controller?.clearVisual();
 
-		// Register locally-cached libs + inline local SVGs BEFORE the first paint
-		// so everything already downloaded renders correctly in a single pass.
-		// Only genuinely-missing (network-required) libs are deferred to a banner.
-		const processedXml = await this.prepareForRender(page.xml);
-		// The component may have unloaded while prepareForRender was awaiting
-		// (e.g. a network stencil check) — bail rather than touch a null renderer.
-		if (this.unloaded || !this.renderer) return;
-		const bbox = this.renderer.load(processedXml);
+		let bbox: BoundingBox;
+		if (this.isVisio) {
+			// Visio has no stencil-library concept (masters are embedded in the
+			// .vsdx itself) and visioParser.ts already fully resolved the page —
+			// no prepareForRender step needed, just hand the page straight over.
+			bbox = this.renderer.load(JSON.stringify(page));
+		} else {
+			// Register locally-cached libs + inline local SVGs BEFORE the first paint
+			// so everything already downloaded renders correctly in a single pass.
+			// Only genuinely-missing (network-required) libs are deferred to a banner.
+			const processedXml = await this.prepareForRender((page as DiagramPage).xml);
+			// The component may have unloaded while prepareForRender was awaiting
+			// (e.g. a network stencil check) — bail rather than touch a null renderer.
+			if (this.unloaded || !this.renderer) return;
+			bbox = this.renderer.load(processedXml);
+		}
 		this.currentBbox = bbox;
 
 		if (this.options.zoom > 0 && this.options.offsetSpecified) {
@@ -676,7 +740,8 @@ export class DiagramViewer extends Component {
 
 		msg.setText('Done — rendering…');
 		// Register the newly downloaded stencil libs, then re-render once.
-		const pageXml = this.pages[this.currentPage]?.xml ?? '';
+		// Stencil libs are a draw.io-only concept (Visio never shows this banner).
+		const pageXml = (this.pages[this.currentPage] as DiagramPage | undefined)?.xml ?? '';
 		await stencilManager.registerLocalLibs(stencils, pageXml, adapter, this.stencilsDir, userDir);
 		banner.removeClass('is-visible');
 		void this.renderCurrentPage();
