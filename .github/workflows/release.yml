@@ -23,8 +23,16 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
+
+      # setup-node's bundled npm mishandles optionalDependencies for newer
+      # platform targets (e.g. @esbuild/openharmony-arm64) — it treats a
+      # not-applicable-on-this-OS optional dep as a hard EBADPLATFORM error
+      # instead of skipping it. Fixed in npm >= ~11.1; pin explicitly rather
+      # than relying on whatever setup-node's Node build ships.
+      - name: Update npm
+        run: npm install -g npm@latest
 
       - name: Install dependencies
         run: npm ci
