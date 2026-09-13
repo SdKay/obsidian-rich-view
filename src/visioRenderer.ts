@@ -1,4 +1,4 @@
-import type { BoundingBox, DiagramRenderer, ShapeHit } from './diagramRenderer';
+import type { BoundingBox, DrawingRenderer, ShapeHit } from './drawingRenderer';
 import type { VisioPage, VisioShape } from './visioParser';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -184,7 +184,7 @@ function wrapLine(line: string, maxWidth: number, fontSize: number): string[] {
 /**
  * Renders a `VisioPage` (already fully resolved to page px-space by
  * visioParser.ts — no ShapeSheet knowledge here) as plain SVG.
- * Implements DiagramRenderer — see that file for the coordinate conventions
+ * Implements DrawingRenderer — see that file for the coordinate conventions
  * ("graph coords" vs "display offset") shared across renderer backends.
  *
  * `load()`'s `content` parameter is a JSON-serialized `VisioPage`, not XML —
@@ -195,7 +195,7 @@ function wrapLine(line: string, maxWidth: number, fontSize: number): string[] {
  * into its SVG — "graph coords" here are the page-px coordinates
  * visioParser.ts already computed; "display offset" = translate * scale.
  */
-export class VisioRenderer implements DiagramRenderer {
+export class VisioRenderer implements DrawingRenderer {
 	private readonly container: HTMLElement;
 	private svgEl: SVGSVGElement | null = null;
 	private groupEl: SVGGElement | null = null;
@@ -307,7 +307,7 @@ export class VisioRenderer implements DiagramRenderer {
 		const svg = doc.createElementNS(SVG_NS, 'svg');
 		svg.setAttribute('width', '100%');
 		svg.setAttribute('height', '100%');
-		svg.classList.add('diagram-view-visio-svg');
+		svg.classList.add('drawing-view-visio-svg');
 
 		// Visio's FillPattern is one of ~40 textured tiles (hatching, dots, ...),
 		// not just solid — matching that whole catalog isn't attempted (same
@@ -334,7 +334,7 @@ export class VisioRenderer implements DiagramRenderer {
 		svg.appendChild(buildHatchDefs(doc, patternEntries));
 
 		const group = doc.createElementNS(SVG_NS, 'g');
-		group.classList.add('diagram-view-visio-content');
+		group.classList.add('drawing-view-visio-content');
 
 		for (const shape of this.shapes) {
 			const variantIdx = shape.fillPattern >= 2 ? hatchVariantIndex(shape.fillPattern) : -1;
@@ -372,7 +372,7 @@ export class VisioRenderer implements DiagramRenderer {
 				text.setAttribute('text-anchor', 'middle');
 				text.setAttribute('font-size', String(fontSize));
 				text.setAttribute('fill', '#000000');
-				text.classList.add('diagram-view-visio-text');
+				text.classList.add('drawing-view-visio-text');
 				lines.forEach((line, i) => {
 					const tspan = doc.createElementNS(SVG_NS, 'tspan');
 					tspan.setAttribute('x', String(shape.textX));

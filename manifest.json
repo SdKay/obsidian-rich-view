@@ -1,9 +1,9 @@
 {
-    "id": "diagram-view",
-    "name": "Diagram View",
+    "id": "rich-view",
+    "name": "Rich View",
     "version": "0.0.12",
     "minAppVersion": "1.8.7",
-    "description": "Render draw.io diagrams inline in your notes — zoom, pan, multi-page tabs, shape links, a magnifier, and third-party shape libraries.",
+    "description": "Render draw.io and Visio diagrams inline in your notes — zoom, pan, multi-page tabs, shape links, a magnifier, and third-party shape libraries. More file formats planned.",
     "author": "sdking.xing",
     "authorUrl": "https://github.com/SdKay",
     "isDesktopOnly": false

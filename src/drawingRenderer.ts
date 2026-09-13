@@ -13,18 +13,18 @@ export interface ShapeHit {
 }
 
 /**
- * Format-agnostic contract viewer.ts depends on instead of a concrete
- * renderer class — the seam for adding renderers for other diagram formats
- * (e.g. Visio) later without touching the viewer's HUD / pan-zoom /
- * magnifier chrome, which only ever talks to a diagram through this
- * interface. `GraphRenderer` (drawio/@maxgraph) is the only implementation
- * today.
+ * Format-agnostic contract drawingViewer.ts depends on instead of a
+ * concrete renderer class — the seam for adding renderers for other vector
+ * "infinite canvas" formats (e.g. CAD) later without touching the viewer's
+ * HUD / pan-zoom / magnifier chrome, which only ever talks to a drawing
+ * through this interface. `GraphRenderer` (drawio/@maxgraph) and
+ * `VisioRenderer` are the implementations today.
  *
  * Coordinate conventions:
  *   - "graph coords": raw units as stored in the source file
  *   - "display offset": screen-pixel equivalent = graph-translate * scale
  */
-export interface DiagramRenderer {
+export interface DrawingRenderer {
 	/** Load (or replace) the diagram content; returns its bounding box. */
 	load(content: string): BoundingBox;
 	/**

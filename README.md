@@ -1,22 +1,22 @@
 <div align="center">
 
-<img src="./diagram-view-demo.gif" alt="Diagram View demo" width="720" />
+<img src="./rich-view-demo.gif" alt="Rich View demo" width="720" />
 
 <p>
   <b>🔍 Zoom &nbsp;·&nbsp; 🖱️ Pan &nbsp;·&nbsp; 📄 Multi-page &nbsp;·&nbsp; 🔗 Shape links &nbsp;·&nbsp; 🔎 Magnifier &nbsp;·&nbsp; 📦 Third-party libs &nbsp;·&nbsp; 🌙 Dark mode</b>
 </p>
 
 <p>
-  <a href="https://github.com/SdKay/obsidian-diagram-view/releases/latest">
-    <img src="https://img.shields.io/github/v/release/SdKay/obsidian-diagram-view?style=flat-square&color=7c3aed" alt="Latest release" />
+  <a href="https://github.com/SdKay/obsidian-rich-view/releases/latest">
+    <img src="https://img.shields.io/github/v/release/SdKay/obsidian-rich-view?style=flat-square&color=7c3aed" alt="Latest release" />
   </a>
-  <a href="https://github.com/SdKay/obsidian-diagram-view/releases">
-    <img src="https://img.shields.io/github/downloads/SdKay/obsidian-diagram-view/total?style=flat-square&color=brightgreen" alt="Total downloads" />
+  <a href="https://github.com/SdKay/obsidian-rich-view/releases">
+    <img src="https://img.shields.io/github/downloads/SdKay/obsidian-rich-view/total?style=flat-square&color=brightgreen" alt="Total downloads" />
   </a>
   <a href="LICENSE">
-    <img src="https://img.shields.io/github/license/SdKay/obsidian-diagram-view?style=flat-square" alt="License" />
+    <img src="https://img.shields.io/github/license/SdKay/obsidian-rich-view?style=flat-square" alt="License" />
   </a>
-  <a href="https://obsidian.md/plugins?id=diagram-view">
+  <a href="https://obsidian.md/plugins?id=rich-view">
     <img src="https://img.shields.io/badge/Obsidian-Community_Plugin-7c3aed?style=flat-square&logo=obsidian&logoColor=white" alt="Obsidian community plugin" />
   </a>
 </p>
@@ -43,16 +43,16 @@
 
 </div>
 
-Render diagrams inline inside your Obsidian notes — with smooth zoom, pan, multi-page tabs, shape links, and full support for third-party shape libraries. Today that means [draw.io](https://www.drawio.com/) `.drawio` files; more diagram formats are planned.
+Render rich file formats inline inside your Obsidian notes — with smooth zoom, pan, multi-page tabs, shape links, and full support for third-party shape libraries. Today that means [draw.io](https://www.drawio.com/) `.drawio` and Visio `.vsdx` files; more formats (PPT, Word, CAD, ...) are planned.
 
 ---
 
 ## Usage
 
-Place your diagram file anywhere in the vault, then embed it with a fenced `dv` code block:
+Place your diagram file anywhere in the vault, then embed it with a fenced `rich-view` code block:
 
 ````markdown
-```dv
+```rich-view
 file=my-diagram.drawio
 ```
 ````
@@ -60,7 +60,7 @@ file=my-diagram.drawio
 Every other field is an explicit `key=value` pair, separated by `|`, in any order:
 
 ````markdown
-```dv
+```rich-view
 file=my-diagram.drawio|page=my_page|height=600|zoom=80|offset=190,34
 ```
 ````
@@ -84,7 +84,7 @@ If your diagram uses extended shape libraries (AWS, Azure, GCP, Cisco, Electrica
 
 Click **Download** — the missing libraries are fetched from draw.io's official repository, saved locally, and reused for all future diagrams. The banner also has a **Settings** shortcut if you prefer to manage libraries manually.
 
-Go to **Settings → Diagram View → Shape Libraries** to:
+Go to **Settings → Rich View → Shape Libraries** to:
 - Browse and download official libraries by category
 - Use **Auto-detect from vault** to find all libraries needed by your existing diagrams
 - Set a **custom folder** for your own shape files
@@ -140,11 +140,11 @@ The viewer automatically adapts to Obsidian's dark theme — no configuration ne
 ### Community plugin marketplace (recommended)
 
 1. **Settings → Community plugins → Browse**
-2. Search **Diagram View** → Install → Enable
+2. Search **Rich View** → Install → Enable
 
 ### Manual
 
-Download `main.js`, `manifest.json`, and `styles.css` from the [latest release](https://github.com/SdKay/obsidian-diagram-view/releases/latest) and copy them to `<vault>/.obsidian/plugins/diagram-view/`.
+Download `main.js`, `manifest.json`, and `styles.css` from the [latest release](https://github.com/SdKay/obsidian-rich-view/releases/latest) and copy them to `<vault>/.obsidian/plugins/rich-view/`.
 
 ---
 
@@ -158,7 +158,7 @@ Download `main.js`, `manifest.json`, and `styles.css` from the [latest release](
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=SdKay/obsidian-diagram-view&type=Date)](https://star-history.com/#SdKay/obsidian-diagram-view&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=SdKay/obsidian-rich-view&type=Date)](https://star-history.com/#SdKay/obsidian-rich-view&Date)
 
 ---
 

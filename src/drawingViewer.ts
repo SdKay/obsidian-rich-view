@@ -1,17 +1,18 @@
 import { App, Component, setTooltip, TFile } from 'obsidian';
 import { stencilManager, OFFICIAL_LIBS } from './stencilManager';
-import { parseDiagramCached, type ViewOptions, type DiagramPage } from './parser';
+import { parseDrawioCached, type DrawioPage } from './drawioParser';
+import type { ViewOptions } from './viewParams';
 import { parseVisioFile, type VisioPage } from './visioParser';
 import { GraphRenderer } from './graphRenderer';
 import { VisioRenderer } from './visioRenderer';
-import type { DiagramRenderer, BoundingBox } from './diagramRenderer';
-import type { DiagramViewSettings } from './settings';
+import type { DrawingRenderer, BoundingBox } from './drawingRenderer';
+import type { RichViewSettings } from './settings';
 import { LinkEditorModal, patchCellLink } from './linkEditor';
 import { PanZoomController, type ViewportHost } from './viewportController';
 import { t } from './i18n';
 
 /** Either format's page — both carry a `name` for tabs/param-string purposes. */
-type AnyPage = DiagramPage | VisioPage;
+type AnyPage = DrawioPage | VisioPage;
 
 /**
  * .drawio files are read as text; .vsdx (a ZIP/OOXML container) must be read
@@ -42,12 +43,12 @@ function contentEquals(a: FileContent, b: FileContent): boolean {
 // read gap, which is what caused the blank-flash) and verify in the background.
 const contentCache = new Map<string, FileContent>();
 
-export class DiagramViewer extends Component {
+export class DrawingViewer extends Component {
 	private readonly app: App;
 	private readonly container: HTMLElement;
 	private readonly options: ViewOptions;
 	/** Live plugin settings (shared reference; reflects changes without reload). */
-	private readonly settings: DiagramViewSettings;
+	private readonly settings: RichViewSettings;
 	/** Called when the user clicks "apply current view to code block". */
 	private readonly onUpdate: ((newParams: string) => Promise<void>) | null;
 
@@ -62,7 +63,7 @@ export class DiagramViewer extends Component {
 	private defaultDisplayX = 0;
 	private defaultDisplayY = 0;
 
-	private renderer: DiagramRenderer | null = null;
+	private renderer: DrawingRenderer | null = null;
 	private statusEl: HTMLElement | null = null;
 	private tabsEl: HTMLElement | null = null;
 	private graphEl: HTMLElement | null = null;
@@ -109,7 +110,7 @@ export class DiagramViewer extends Component {
 		app: App,
 		container: HTMLElement,
 		options: ViewOptions,
-		settings: DiagramViewSettings,
+		settings: RichViewSettings,
 		sourcePath: string,
 		stencilsDir: string,
 		onUpdate?: (newParams: string) => Promise<void>,
@@ -131,7 +132,7 @@ export class DiagramViewer extends Component {
 	private async initAndLoad(): Promise<void> {
 		const file = this.resolveFile(this.options.filename);
 		if (!file) {
-			this.container.createDiv({ cls: 'diagram-view-error', text: `File not found: ${this.options.filename}` });
+			this.container.createDiv({ cls: 'drawing-view-error', text: `File not found: ${this.options.filename}` });
 			return;
 		}
 
@@ -178,7 +179,7 @@ export class DiagramViewer extends Component {
 				return;
 			}
 
-			const diagram = parseDiagramCached(content);
+			const diagram = parseDrawioCached(content);
 
 			// Soft-reload: same number of pages and renderer already exists.
 			if (this.renderer && diagram.pages.length === this.pages.length) {
@@ -198,7 +199,7 @@ export class DiagramViewer extends Component {
 			// Full rebuild needed (page count changed or no renderer yet).
 			this.renderFromContent(content);
 		} catch (err) {
-			console.error('DiagramViewer reload:', err);
+			console.error('DrawingViewer reload:', err);
 		}
 	}
 
@@ -210,7 +211,7 @@ export class DiagramViewer extends Component {
 			contentCache.set(file.path, content);
 			this.renderFromContent(content);
 		} catch (err) {
-			console.error('DiagramViewer:', err);
+			console.error('DrawingViewer:', err);
 		}
 	}
 
@@ -237,14 +238,14 @@ export class DiagramViewer extends Component {
 			const visio = parseVisioFile(content as ArrayBuffer);
 			this.pages = visio.pages;
 			if (this.pages.length === 0) {
-				this.container.createDiv({ cls: 'diagram-view-error', text: visio.error ?? 'No pages found.' });
+				this.container.createDiv({ cls: 'drawing-view-error', text: visio.error ?? 'No pages found.' });
 				return;
 			}
 		} else {
-			const diagram = parseDiagramCached(content as string);
+			const diagram = parseDrawioCached(content as string);
 			this.pages = diagram.pages;
 			if (this.pages.length === 0) {
-				this.container.createDiv({ cls: 'diagram-view-error', text: diagram.error ?? 'No diagrams found.' });
+				this.container.createDiv({ cls: 'drawing-view-error', text: diagram.error ?? 'No diagrams found.' });
 				return;
 			}
 		}
@@ -275,7 +276,7 @@ export class DiagramViewer extends Component {
 	}
 
 	private buildLayout(): void {
-		this.container.addClass('diagram-view-container');
+		this.container.addClass('drawing-view-container');
 		// Clear the render-time height reservation (set in main.ts) now that the
 		// real container drives height — keeps the resize handle free to shrink.
 		this.container.style.removeProperty('min-height');
@@ -287,22 +288,22 @@ export class DiagramViewer extends Component {
 		// panEl is what @maxgraph renders into and what we CSS-translate for
 		// panning — it can overflow graphEl, so content panned off-screen still
 		// exists in the DOM and reappears when panned back.
-		this.graphEl = this.container.createDiv('diagram-view-graph');
-		this.panEl = this.graphEl.createDiv('diagram-view-pan');
-		this.highlightEl = this.panEl.createDiv('diagram-view-highlight');
+		this.graphEl = this.container.createDiv('drawing-view-graph');
+		this.panEl = this.graphEl.createDiv('drawing-view-pan');
+		this.highlightEl = this.panEl.createDiv('drawing-view-highlight');
 
 		// Magnifier (loupe): a circular viewport, sibling of panEl so it clips
 		// against graphEl's own overflow:hidden box. Empty/hidden until activated.
-		this.magnifierEl = this.graphEl.createDiv('diagram-view-magnifier');
-		this.magnifierViewportEl = this.magnifierEl.createDiv('diagram-view-magnifier-viewport');
+		this.magnifierEl = this.graphEl.createDiv('drawing-view-magnifier');
+		this.magnifierViewportEl = this.magnifierEl.createDiv('drawing-view-magnifier-viewport');
 
 		// HUD: apply button (optional) + status text, bottom-right corner.
 		// Kept as a sibling of graphEl (not inside it) so @maxgraph's internal
 		// HTML-label overlay cannot interfere with its position.
-		const hud = this.container.createDiv('diagram-view-hud');
+		const hud = this.container.createDiv('drawing-view-hud');
 
 		const openBtn = hud.createEl('span', {
-			cls: 'diagram-view-open-btn',
+			cls: 'drawing-view-open-btn',
 			attr: { 'role': 'button', 'aria-label': t('openExternal'), 'tabindex': '0' },
 		});
 		setTooltip(openBtn, t('openExternal'));
@@ -317,7 +318,7 @@ export class DiagramViewer extends Component {
 		// that pinned view instead — see resetView()). This is the only way
 		// back to auto-fit once a view has been pinned via ⊙.
 		const fitBtn = hud.createEl('span', {
-			cls: 'diagram-view-fit-btn',
+			cls: 'drawing-view-fit-btn',
 			attr: { 'role': 'button', 'aria-label': t('autoFit'), 'tabindex': '0' },
 		});
 		setTooltip(fitBtn, t('autoFit'));
@@ -328,7 +329,7 @@ export class DiagramViewer extends Component {
 		});
 
 		this.magnifierBtnEl = hud.createEl('span', {
-			cls: 'diagram-view-magnifier-btn',
+			cls: 'drawing-view-magnifier-btn',
 			attr: { 'role': 'button', 'aria-label': t('magnifier'), 'tabindex': '0' },
 		});
 		setTooltip(this.magnifierBtnEl, t('magnifier'));
@@ -340,44 +341,44 @@ export class DiagramViewer extends Component {
 
 		if (this.onUpdate) {
 			const btn = hud.createEl('span', {
-				cls: 'diagram-view-update-btn',
+				cls: 'drawing-view-update-btn',
 				attr: { 'role': 'button', 'aria-label': t('applyView'), 'tabindex': '0' },
 			});
 			setTooltip(btn, t('applyView'));
 			btn.setText('⊙');
 			this.registerDomEvent(btn, 'click', () => {
-				this.applyCurrentView().catch(err => console.error('DiagramViewer update:', err));
+				this.applyCurrentView().catch(err => console.error('DrawingViewer update:', err));
 			});
 			this.registerDomEvent(btn, 'keydown', (e: KeyboardEvent) => {
 				if (e.key === 'Enter' || e.key === ' ') {
 					e.preventDefault();
-					this.applyCurrentView().catch(err => console.error('DiagramViewer update:', err));
+					this.applyCurrentView().catch(err => console.error('DrawingViewer update:', err));
 				}
 			});
 		}
 
-		this.statusEl = hud.createDiv('diagram-view-status');
+		this.statusEl = hud.createDiv('drawing-view-status');
 		this.statusEl.setAttribute('aria-live', 'polite');
 
 		if (this.pages.length > 1) {
 			// `has-tabs` lifts the HUD above the tab bar (CSS).
 			this.container.addClass('has-tabs');
-			this.tabsEl = this.container.createDiv('diagram-view-tabs');
+			this.tabsEl = this.container.createDiv('drawing-view-tabs');
 			this.tabsEl.setAttribute('role', 'tablist');
 			this.buildTabs();
 		}
 
-		this.tooltipEl = this.container.createDiv('diagram-view-link-tooltip');
+		this.tooltipEl = this.container.createDiv('drawing-view-link-tooltip');
 		const tooltipEditBtn = this.tooltipEl.createEl('span', {
-			cls: 'diagram-view-tooltip-edit',
+			cls: 'drawing-view-tooltip-edit',
 			attr: { role: 'button', tabindex: '0', 'aria-label': t('editLink') },
 		});
 		setTooltip(tooltipEditBtn, t('editLink'));
-		this.tooltipTextEl = this.tooltipEl.createEl('span', { cls: 'diagram-view-tooltip-text' });
+		this.tooltipTextEl = this.tooltipEl.createEl('span', { cls: 'drawing-view-tooltip-text' });
 		tooltipEditBtn.setText('✎');
 
 		// Banner for missing stencil lib notifications.
-		this.libsBannerEl = this.container.createDiv({ cls: 'diagram-view-libs-banner' });
+		this.libsBannerEl = this.container.createDiv({ cls: 'drawing-view-libs-banner' });
 
 		this.registerDomEvent(tooltipEditBtn, 'click', (e: MouseEvent) => {
 			e.stopPropagation();
@@ -385,7 +386,7 @@ export class DiagramViewer extends Component {
 			if (!cellId) return;
 			new LinkEditorModal(this.app, this.hoveredLink ?? '', (newLink) => {
 				this.updateCellLink(cellId, newLink).catch(
-					(err: unknown) => console.error('DiagramViewer link edit:', err),
+					(err: unknown) => console.error('DrawingViewer link edit:', err),
 				);
 			}).open();
 		});
@@ -396,7 +397,7 @@ export class DiagramViewer extends Component {
 			if (!cellId) return;
 			new LinkEditorModal(this.app, this.hoveredLink ?? '', (newLink) => {
 				this.updateCellLink(cellId, newLink).catch(
-					(err: unknown) => console.error('DiagramViewer link edit:', err),
+					(err: unknown) => console.error('DrawingViewer link edit:', err),
 				);
 			}).open();
 		});
@@ -406,7 +407,7 @@ export class DiagramViewer extends Component {
 	}
 
 	private buildResizeHandle(): void {
-		const handle = this.container.createDiv('diagram-view-resize-handle');
+		const handle = this.container.createDiv('drawing-view-resize-handle');
 		handle.setAttribute('aria-label', t('resizeHandle'));
 		setTooltip(handle, t('resizeHandle'));
 
@@ -446,7 +447,7 @@ export class DiagramViewer extends Component {
 			// Persist the new height to the code block (preserving other params).
 			if (this.onUpdate) {
 				this.onUpdate(this.buildParamFromOptions()).catch(err =>
-					console.error('DiagramViewer resize:', err));
+					console.error('DrawingViewer resize:', err));
 			}
 		});
 	}
@@ -456,7 +457,7 @@ export class DiagramViewer extends Component {
 		this.tabsEl.empty();
 		this.pages.forEach((page, i) => {
 			const tab = this.tabsEl!.createEl('button', {
-				cls: 'diagram-view-tab' + (i === this.currentPage ? ' is-active' : ''),
+				cls: 'drawing-view-tab' + (i === this.currentPage ? ' is-active' : ''),
 				text: page.name,
 				attr: {
 					role: 'tab',
@@ -474,7 +475,7 @@ export class DiagramViewer extends Component {
 
 	private switchPage(index: number): void {
 		this.currentPage = index;
-		this.tabsEl?.querySelectorAll<HTMLElement>('.diagram-view-tab').forEach((tab, i) => {
+		this.tabsEl?.querySelectorAll<HTMLElement>('.drawing-view-tab').forEach((tab, i) => {
 			const active = i === index;
 			tab.toggleClass('is-active', active);
 			tab.setAttribute('aria-selected', String(active));
@@ -520,7 +521,7 @@ export class DiagramViewer extends Component {
 			// Register locally-cached libs + inline local SVGs BEFORE the first paint
 			// so everything already downloaded renders correctly in a single pass.
 			// Only genuinely-missing (network-required) libs are deferred to a banner.
-			const processedXml = await this.prepareForRender((page as DiagramPage).xml);
+			const processedXml = await this.prepareForRender((page as DrawioPage).xml);
 			// The component may have unloaded while prepareForRender was awaiting
 			// (e.g. a network stencil check) — bail rather than touch a null renderer.
 			if (this.unloaded || !this.renderer) return;
@@ -660,14 +661,14 @@ export class DiagramViewer extends Component {
 		if (!banner) return;
 		banner.empty();
 
-		const msg = banner.createEl('span', { cls: 'diagram-libs-banner-msg' });
+		const msg = banner.createEl('span', { cls: 'drawio-libs-banner-msg' });
 		msg.appendText(`⚠ Missing shape libraries: ${names.join(', ')} `);
-		msg.createEl('span', { cls: 'diagram-libs-banner-hint', text: '— download here or in plugin settings' });
+		msg.createEl('span', { cls: 'drawio-libs-banner-hint', text: '— download here or in plugin settings' });
 
-		const actions = banner.createDiv('diagram-libs-banner-actions');
+		const actions = banner.createDiv('drawio-libs-banner-actions');
 
 		const dlBtn = actions.createEl('span', {
-			cls: 'diagram-libs-banner-btn diagram-libs-banner-btn-primary',
+			cls: 'drawio-libs-banner-btn drawio-libs-banner-btn-primary',
 			attr: { role: 'button', tabindex: '0' },
 			text: 'Download',
 		});
@@ -677,7 +678,7 @@ export class DiagramViewer extends Component {
 		});
 
 		const settingsBtn = actions.createEl('span', {
-			cls: 'diagram-libs-banner-btn',
+			cls: 'drawio-libs-banner-btn',
 			attr: { role: 'button', tabindex: '0' },
 			text: 'Settings',
 		});
@@ -687,7 +688,7 @@ export class DiagramViewer extends Component {
 		});
 
 		const dismissBtn = actions.createEl('span', {
-			cls: 'diagram-libs-banner-btn',
+			cls: 'drawio-libs-banner-btn',
 			attr: { role: 'button', tabindex: '0' },
 			text: '✕',
 		});
@@ -702,7 +703,7 @@ export class DiagramViewer extends Component {
 			setting?: { open(): void; openTabById(id: string): void };
 		}).setting;
 		setting?.open();
-		setting?.openTabById('diagram-view');
+		setting?.openTabById('rich-view');
 	}
 
 	private async downloadPending(): Promise<void> {
@@ -714,7 +715,7 @@ export class DiagramViewer extends Component {
 		const images = this.pendingImages;
 
 		banner.empty();
-		const msg = banner.createEl('span', { cls: 'diagram-libs-banner-msg', text: 'Downloading…' });
+		const msg = banner.createEl('span', { cls: 'drawio-libs-banner-msg', text: 'Downloading…' });
 
 		const results = await Promise.allSettled([
 			...stencils.map(lib => stencilManager.downloadLib(lib, adapter, this.stencilsDir)),
@@ -728,11 +729,11 @@ export class DiagramViewer extends Component {
 		if (results.some(r => r.status === 'rejected')) {
 			banner.empty();
 			banner.createEl('span', {
-				cls: 'diagram-libs-banner-msg diagram-libs-banner-error',
+				cls: 'drawio-libs-banner-msg drawio-libs-banner-error',
 				text: 'Some downloads failed — check your network and reload.',
 			});
-			const dismiss = banner.createDiv('diagram-libs-banner-actions').createEl('span', {
-				cls: 'diagram-libs-banner-btn', attr: { role: 'button', tabindex: '0' }, text: '✕',
+			const dismiss = banner.createDiv('drawio-libs-banner-actions').createEl('span', {
+				cls: 'drawio-libs-banner-btn', attr: { role: 'button', tabindex: '0' }, text: '✕',
 			});
 			this.registerDomEvent(dismiss, 'click', () => { banner.removeClass('is-visible'); });
 			return;
@@ -741,7 +742,7 @@ export class DiagramViewer extends Component {
 		msg.setText('Done — rendering…');
 		// Register the newly downloaded stencil libs, then re-render once.
 		// Stencil libs are a draw.io-only concept (Visio never shows this banner).
-		const pageXml = (this.pages[this.currentPage] as DiagramPage | undefined)?.xml ?? '';
+		const pageXml = (this.pages[this.currentPage] as DrawioPage | undefined)?.xml ?? '';
 		await stencilManager.registerLocalLibs(stencils, pageXml, adapter, this.stencilsDir, userDir);
 		banner.removeClass('is-visible');
 		void this.renderCurrentPage();
@@ -791,10 +792,10 @@ export class DiagramViewer extends Component {
 					this.hoveredLink   = shape?.link ?? null;
 					if (shape && this.highlightEl) {
 						this.highlightEl.setCssProps({
-							'--dv-hl-x': `${Math.round(shape.bounds.x)}px`,
-							'--dv-hl-y': `${Math.round(shape.bounds.y)}px`,
-							'--dv-hl-w': `${Math.round(shape.bounds.w)}px`,
-							'--dv-hl-h': `${Math.round(shape.bounds.h)}px`,
+							'--dw-hl-x': `${Math.round(shape.bounds.x)}px`,
+							'--dw-hl-y': `${Math.round(shape.bounds.y)}px`,
+							'--dw-hl-w': `${Math.round(shape.bounds.w)}px`,
+							'--dw-hl-h': `${Math.round(shape.bounds.h)}px`,
 						});
 						this.highlightEl.addClass('is-visible');
 					} else {
@@ -819,8 +820,8 @@ export class DiagramViewer extends Component {
 						const cx = (shape.bounds.x + shape.bounds.w / 2) * v.scale + v.tx + (gRect.left - cRect.left);
 						const cy = (shape.bounds.y + shape.bounds.h / 2) * v.scale + v.ty + (gRect.top  - cRect.top);
 						this.tooltipEl.setCssProps({
-							'--dv-tip-x': `${Math.round(cx)}px`,
-							'--dv-tip-y': `${Math.round(cy)}px`,
+							'--dw-tip-x': `${Math.round(cx)}px`,
+							'--dw-tip-y': `${Math.round(cy)}px`,
 						});
 						this.tooltipEl.addClass('is-visible');
 					} else {
@@ -867,7 +868,7 @@ export class DiagramViewer extends Component {
 		// openWithDefaultApp is a runtime-only method not exposed in Obsidian's types.
 		(this.app as unknown as { openWithDefaultApp(p: string): Promise<void> })
 			.openWithDefaultApp(this.options.filename)
-			.catch((err: unknown) => console.error('DiagramViewer open:', err));
+			.catch((err: unknown) => console.error('DrawingViewer open:', err));
 	}
 
 	private async updateCellLink(cellId: string, link: string): Promise<void> {
@@ -973,7 +974,7 @@ export class DiagramViewer extends Component {
 		this.graphEl.addClass('is-magnifying');
 		this.magnifierEl.addClass('is-active');
 		this.magnifierBtnEl?.addClass('is-active');
-		// Clone panEl's current render (including its live --dv-* pan/zoom
+		// Clone panEl's current render (including its live --dw-* pan/zoom
 		// transform, copied verbatim onto the clone's inline style) so the
 		// loupe shows the same content without needing a second live render.
 		this.magnifierViewportEl.empty();
@@ -996,18 +997,18 @@ export class DiagramViewer extends Component {
 	private applyMagnifierTransform(): void {
 		if (!this.magnifierActive || !this.magnifierEl || !this.magnifierViewportEl || !this.graphEl) return;
 		this.magnifierEl.setCssProps({
-			'--dv-mag-x': `${this.magnifierMx}px`,
-			'--dv-mag-y': `${this.magnifierMy}px`,
-			'--dv-mag-size': `${this.magnifierRadius * 2}px`,
+			'--dw-mag-x': `${this.magnifierMx}px`,
+			'--dw-mag-y': `${this.magnifierMy}px`,
+			'--dw-mag-size': `${this.magnifierRadius * 2}px`,
 		});
 		this.magnifierViewportEl.setCssProps({
-			'--dv-mag-vp-left': `${this.magnifierRadius - this.magnifierMx}px`,
-			'--dv-mag-vp-top': `${this.magnifierRadius - this.magnifierMy}px`,
-			'--dv-mag-vp-w': `${this.graphEl.clientWidth}px`,
-			'--dv-mag-vp-h': `${this.graphEl.clientHeight}px`,
-			'--dv-mag-origin-x': `${this.magnifierMx}px`,
-			'--dv-mag-origin-y': `${this.magnifierMy}px`,
-			'--dv-mag-zoom': `${this.magnifierZoom}`,
+			'--dw-mag-vp-left': `${this.magnifierRadius - this.magnifierMx}px`,
+			'--dw-mag-vp-top': `${this.magnifierRadius - this.magnifierMy}px`,
+			'--dw-mag-vp-w': `${this.graphEl.clientWidth}px`,
+			'--dw-mag-vp-h': `${this.graphEl.clientHeight}px`,
+			'--dw-mag-origin-x': `${this.magnifierMx}px`,
+			'--dw-mag-origin-y': `${this.magnifierMy}px`,
+			'--dw-mag-zoom': `${this.magnifierZoom}`,
 		});
 	}
 

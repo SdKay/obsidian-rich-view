@@ -1,16 +1,16 @@
 import { Graph, ModelXmlSerializer, InternalEvent, type ShapeValue, type Cell } from '@maxgraph/core';
 import { registerBuiltinShapes } from './builtinShapes';
-import type { BoundingBox, DiagramRenderer, ShapeHit } from './diagramRenderer';
+import type { BoundingBox, DrawingRenderer, ShapeHit } from './drawingRenderer';
 
 // Register draw.io built-in JS shapes (curlyBracket etc.) once at module load.
 registerBuiltinShapes();
 
 /**
  * Thin wrapper around @maxgraph/core's Graph for read-only diagram rendering.
- * Implements DiagramRenderer — see that file for the coordinate conventions
+ * Implements DrawingRenderer — see that file for the coordinate conventions
  * ("graph coords" vs "display offset") shared across renderer backends.
  */
-export class GraphRenderer implements DiagramRenderer {
+export class GraphRenderer implements DrawingRenderer {
 	private readonly graph: Graph;
 
 	constructor(container: HTMLElement) {

@@ -1,22 +1,22 @@
 <div align="center">
 
-<img src="./diagram-view-demo.gif" alt="Diagram View 演示" width="720" />
+<img src="./rich-view-demo.gif" alt="Rich View 演示" width="720" />
 
 <p>
   <b>🔍 缩放 &nbsp;·&nbsp; 🖱️ 平移 &nbsp;·&nbsp; 📄 多页 &nbsp;·&nbsp; 🔗 图形链接 &nbsp;·&nbsp; 🔎 放大镜 &nbsp;·&nbsp; 📦 三方图形库 &nbsp;·&nbsp; 🌙 深色模式</b>
 </p>
 
 <p>
-  <a href="https://github.com/SdKay/obsidian-diagram-view/releases/latest">
-    <img src="https://img.shields.io/github/v/release/SdKay/obsidian-diagram-view?style=flat-square&color=7c3aed" alt="最新版本" />
+  <a href="https://github.com/SdKay/obsidian-rich-view/releases/latest">
+    <img src="https://img.shields.io/github/v/release/SdKay/obsidian-rich-view?style=flat-square&color=7c3aed" alt="最新版本" />
   </a>
-  <a href="https://github.com/SdKay/obsidian-diagram-view/releases">
-    <img src="https://img.shields.io/github/downloads/SdKay/obsidian-diagram-view/total?style=flat-square&color=brightgreen" alt="总下载量" />
+  <a href="https://github.com/SdKay/obsidian-rich-view/releases">
+    <img src="https://img.shields.io/github/downloads/SdKay/obsidian-rich-view/total?style=flat-square&color=brightgreen" alt="总下载量" />
   </a>
   <a href="LICENSE">
-    <img src="https://img.shields.io/github/license/SdKay/obsidian-diagram-view?style=flat-square" alt="许可证" />
+    <img src="https://img.shields.io/github/license/SdKay/obsidian-rich-view?style=flat-square" alt="许可证" />
   </a>
-  <a href="https://obsidian.md/plugins?id=diagram-view">
+  <a href="https://obsidian.md/plugins?id=rich-view">
     <img src="https://img.shields.io/badge/Obsidian-社区插件-7c3aed?style=flat-square&logo=obsidian&logoColor=white" alt="Obsidian 社区插件" />
   </a>
 </p>
@@ -43,16 +43,16 @@
 
 </div>
 
-在 Obsidian 笔记中内嵌渲染图表——支持流畅缩放平移、多页标签、图形链接，以及完整的三方图形库支持。目前支持 [draw.io](https://www.drawio.com/) `.drawio` 文件，未来会支持更多图表格式。
+在 Obsidian 笔记中内嵌渲染各类富文件格式——支持流畅缩放平移、多页标签、图形链接，以及完整的三方图形库支持。目前支持 [draw.io](https://www.drawio.com/) `.drawio` 和 Visio `.vsdx` 文件，未来会支持更多格式（PPT、Word、CAD 等）。
 
 ---
 
 ## 使用方法
 
-将图表文件放在 vault 任意位置，用围栏 `dv` 代码块嵌入：
+将图表文件放在 vault 任意位置，用围栏 `rich-view` 代码块嵌入：
 
 ````markdown
-```dv
+```rich-view
 file=my-diagram.drawio
 ```
 ````
@@ -60,7 +60,7 @@ file=my-diagram.drawio
 其他字段都是显式的 `key=value`，用 `|` 分隔，顺序任意：
 
 ````markdown
-```dv
+```rich-view
 file=my-diagram.drawio|page=my_page|height=600|zoom=80|offset=190,34
 ```
 ````
@@ -84,7 +84,7 @@ file=my-diagram.drawio|page=my_page|height=600|zoom=80|offset=190,34
 
 点击 **Download**，缺失的图形库会从 draw.io 官方仓库下载到本地，后续所有图表直接复用，无需再次下载。横幅上还有 **Settings** 快捷入口，方便手动管理。
 
-进入**设置 → Diagram View → Shape Libraries** 可以：
+进入**设置 → Rich View → Shape Libraries** 可以：
 - 按分类浏览并下载官方图形库
 - 点击 **Auto-detect from vault** 扫描 vault 中所有 `.drawio` 文件，一键检测所需图形库
 - 设置**自定义图形库目录**，放入自己的图形文件后自动加载
@@ -140,11 +140,11 @@ Obsidian 切换深色主题时，查看器自动适配，无需任何配置。
 ### 社区插件市场（推荐）
 
 1. **设置 → 社区插件 → 浏览**
-2. 搜索 **Diagram View** → 安装 → 启用
+2. 搜索 **Rich View** → 安装 → 启用
 
 ### 手动安装
 
-从[最新 Release](https://github.com/SdKay/obsidian-diagram-view/releases/latest) 下载 `main.js`、`manifest.json`、`styles.css`，复制到 `<vault>/.obsidian/plugins/diagram-view/`。
+从[最新 Release](https://github.com/SdKay/obsidian-rich-view/releases/latest) 下载 `main.js`、`manifest.json`、`styles.css`，复制到 `<vault>/.obsidian/plugins/rich-view/`。
 
 ---
 
@@ -158,7 +158,7 @@ Obsidian 切换深色主题时，查看器自动适配，无需任何配置。
 
 ## Star 历史
 
-[![Star History Chart](https://api.star-history.com/svg?repos=SdKay/obsidian-diagram-view&type=Date)](https://star-history.com/#SdKay/obsidian-diagram-view&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=SdKay/obsidian-rich-view&type=Date)](https://star-history.com/#SdKay/obsidian-rich-view&Date)
 
 ---
 

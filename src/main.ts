@@ -1,9 +1,9 @@
 import { MarkdownRenderChild, MarkdownSectionInformation, Plugin, TFile, normalizePath } from 'obsidian';
-import { parseViewParams, type ViewOptions } from './parser';
-import { DiagramViewer } from './viewer';
-import { DEFAULT_SETTINGS, DiagramViewSettingTab, type DiagramViewSettings } from './settings';
+import { parseViewParams, type ViewOptions } from './viewParams';
+import { DrawingViewer } from './drawingViewer';
+import { DEFAULT_SETTINGS, RichViewSettingTab, type RichViewSettings } from './settings';
 
-class DiagramCodeBlock extends MarkdownRenderChild {
+class RichCodeBlock extends MarkdownRenderChild {
 	constructor(
 		el: HTMLElement,
 		private app_: typeof Plugin.prototype.app,
@@ -11,7 +11,7 @@ class DiagramCodeBlock extends MarkdownRenderChild {
 		private sourcePath: string,
 		private originalSource: string,
 		private sectionInfo: MarkdownSectionInformation | null,
-		private settings: DiagramViewSettings,
+		private settings: RichViewSettings,
 		private stencilsDir: string,
 	) {
 		super(el);
@@ -26,7 +26,7 @@ class DiagramCodeBlock extends MarkdownRenderChild {
 			await this.app_.vault.process(file, content => this.rewrite(content, newParams));
 		};
 
-		const viewer = new DiagramViewer(this.app_, this.containerEl, this.options, this.settings, this.sourcePath, this.stencilsDir, onUpdate);
+		const viewer = new DrawingViewer(this.app_, this.containerEl, this.options, this.settings, this.sourcePath, this.stencilsDir, onUpdate);
 		this.addChild(viewer);
 		viewer.load();
 	}
@@ -47,7 +47,7 @@ class DiagramCodeBlock extends MarkdownRenderChild {
 		const escContent = this.originalSource.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 		if (!escContent) return content;
 		const pattern = new RegExp(
-			'([ \\t]*)(`{3,})dv[^\\n]*[\\r\\n]+' +
+			'([ \\t]*)(`{3,})rich-view[^\\n]*[\\r\\n]+' +
 			'[ \\t]*' + escContent + '[ \\t]*[\\r\\n]+' +
 			'[ \\t]*\\2',
 			'g',
@@ -56,24 +56,24 @@ class DiagramCodeBlock extends MarkdownRenderChild {
 		return content.replace(pattern, (whole, indent, fence) => {
 			if (replaced) return whole;
 			replaced = true;
-			return `${indent}${fence}dv\n${indent}${newParams}\n${indent}${fence}`;
+			return `${indent}${fence}rich-view\n${indent}${newParams}\n${indent}${fence}`;
 		});
 	}
 }
 
-export default class DiagramViewPlugin extends Plugin {
-	settings: DiagramViewSettings = { ...DEFAULT_SETTINGS };
+export default class RichViewPlugin extends Plugin {
+	settings: RichViewSettings = { ...DEFAULT_SETTINGS };
 
 	async onload(): Promise<void> {
 		await this.loadSettings();
-		this.addSettingTab(new DiagramViewSettingTab(this.app, this));
+		this.addSettingTab(new RichViewSettingTab(this.app, this));
 
 		const stencilsDir = normalizePath(`${this.app.vault.configDir}/plugins/${this.manifest.id}/stencils`);
 
-		this.registerMarkdownCodeBlockProcessor('dv', (source, el, ctx) => {
+		this.registerMarkdownCodeBlockProcessor('rich-view', (source, el, ctx) => {
 			const options = parseViewParams(source.trim());
 			if (!options.filename) {
-				el.createDiv({ cls: 'diagram-view-error', text: 'No filename specified. Use `file=<name>`.' });
+				el.createDiv({ cls: 'drawing-view-error', text: 'No filename specified. Use `file=<name>`.' });
 				return;
 			}
 			options.filename = this.resolveRelative(options.filename, ctx.sourcePath);
@@ -84,12 +84,12 @@ export default class DiagramViewPlugin extends Plugin {
 			// expanding to ~400px afterwards shoves the content above it off-screen.
 			el.style.setProperty('min-height', `${options.height > 0 ? options.height : 400}px`);
 			// Pass the live settings object so viewers see changes without reload.
-			ctx.addChild(new DiagramCodeBlock(el, this.app, options, ctx.sourcePath, source, sectionInfo, this.settings, stencilsDir));
+			ctx.addChild(new RichCodeBlock(el, this.app, options, ctx.sourcePath, source, sectionInfo, this.settings, stencilsDir));
 		});
 	}
 
 	async loadSettings(): Promise<void> {
-		Object.assign(this.settings, DEFAULT_SETTINGS, (await this.loadData()) as Partial<DiagramViewSettings>);
+		Object.assign(this.settings, DEFAULT_SETTINGS, (await this.loadData()) as Partial<RichViewSettings>);
 	}
 
 	async saveSettings(): Promise<void> {

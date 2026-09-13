@@ -1,11 +1,11 @@
 import { App, normalizePath, PluginSettingTab, Setting } from 'obsidian';
-import type DiagramViewPlugin from './main';
+import type RichViewPlugin from './main';
 import { OFFICIAL_LIBS, stencilManager } from './stencilManager';
 
 export type ZoomModifier = 'none' | 'ctrl';
 export type PanModifier = 'none' | 'ctrl';
 
-export interface DiagramViewSettings {
+export interface RichViewSettings {
 	/** Whether wheel-zoom requires holding Ctrl/Cmd (avoids zooming while scrolling the note). */
 	zoomModifier: ZoomModifier;
 	/** 'none': drag=pan, Ctrl+click=follow link.  'ctrl': Ctrl+drag=pan, click=follow link. */
@@ -14,16 +14,16 @@ export interface DiagramViewSettings {
 	customStencilDir: string;
 }
 
-export const DEFAULT_SETTINGS: DiagramViewSettings = {
+export const DEFAULT_SETTINGS: RichViewSettings = {
 	zoomModifier: 'none',
 	panModifier: 'none',
 	customStencilDir: '',
 };
 
-export class DiagramViewSettingTab extends PluginSettingTab {
-	private readonly plugin: DiagramViewPlugin;
+export class RichViewSettingTab extends PluginSettingTab {
+	private readonly plugin: RichViewPlugin;
 
-	constructor(app: App, plugin: DiagramViewPlugin) {
+	constructor(app: App, plugin: RichViewPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}
@@ -74,11 +74,11 @@ export class DiagramViewSettingTab extends PluginSettingTab {
 			.setName('Custom library folder')
 			.setDesc(
 				'Vault-relative path to a folder containing your own stencil .xml files. ' +
-				'Leave empty to disable. Example: diagram-stencils',
+				'Leave empty to disable. Example: drawio-stencils',
 			)
 			.addText(text =>
 				text
-					.setPlaceholder('Diagram-stencils')
+					.setPlaceholder('Drawio-stencils')
 					.setValue(this.plugin.settings.customStencilDir)
 					.onChange(async value => {
 						this.plugin.settings.customStencilDir = value.trim();
@@ -92,9 +92,9 @@ export class DiagramViewSettingTab extends PluginSettingTab {
 		);
 		const adapter = this.plugin.app.vault.adapter;
 
-		const libsHeader = containerEl.createDiv({ cls: 'diagram-libs-header' });
+		const libsHeader = containerEl.createDiv({ cls: 'drawio-libs-header' });
 		libsHeader.createEl('span', { text: 'Official libraries' });
-		const headerControls = libsHeader.createDiv({ cls: 'diagram-libs-controls' });
+		const headerControls = libsHeader.createDiv({ cls: 'drawio-libs-controls' });
 
 		const selectAllBtn   = headerControls.createEl('button', { text: 'Select all' });
 		const deselectAllBtn = headerControls.createEl('button', { text: 'Deselect all' });
@@ -106,8 +106,8 @@ export class DiagramViewSettingTab extends PluginSettingTab {
 		const refreshBadges = async () => {
 			const localLibs = await stencilManager.getLocalLibs(adapter, stencilsDir);
 			checkboxMap.forEach((_, file) => {
-				const row = containerEl.querySelector(`.diagram-lib-row[data-file="${file}"]`);
-				const badge = row?.querySelector('.diagram-lib-badge');
+				const row = containerEl.querySelector(`.drawio-lib-row[data-file="${file}"]`);
+				const badge = row?.querySelector('.drawio-lib-badge');
 				if (!badge) return;
 				const isLocal = localLibs.includes(file);
 				badge.setText(isLocal ? '✓ Downloaded' : 'Not downloaded');
@@ -115,19 +115,19 @@ export class DiagramViewSettingTab extends PluginSettingTab {
 			});
 		};
 
-		const listEl = containerEl.createDiv({ cls: 'diagram-libs-list' });
+		const listEl = containerEl.createDiv({ cls: 'drawio-libs-list' });
 		let currentCategory = '';
 		for (const entry of OFFICIAL_LIBS) {
 			if (entry.category !== currentCategory) {
 				currentCategory = entry.category;
-				listEl.createEl('div', { cls: 'diagram-libs-category', text: entry.category });
+				listEl.createEl('div', { cls: 'drawio-libs-category', text: entry.category });
 			}
-			const row = listEl.createDiv({ cls: 'diagram-lib-row', attr: { 'data-file': entry.file } });
+			const row = listEl.createDiv({ cls: 'drawio-lib-row', attr: { 'data-file': entry.file } });
 			const checkbox = row.createEl('input', { attr: { type: 'checkbox' } });
 			checkboxMap.set(entry.file, checkbox);
-			row.createEl('span', { cls: 'diagram-lib-name', text: entry.name });
-			row.createEl('span', { cls: 'diagram-lib-file', text: `(${entry.file}.xml)` });
-			row.createEl('span', { cls: 'diagram-lib-badge', text: 'Not downloaded' });
+			row.createEl('span', { cls: 'drawio-lib-name', text: entry.name });
+			row.createEl('span', { cls: 'drawio-lib-file', text: `(${entry.file}.xml)` });
+			row.createEl('span', { cls: 'drawio-lib-badge', text: 'Not downloaded' });
 		}
 
 		void refreshBadges();
@@ -159,7 +159,7 @@ export class DiagramViewSettingTab extends PluginSettingTab {
 					try {
 						await stencilManager.downloadLib(file, adapter, stencilsDir);
 					} catch (err) {
-						console.error(`diagram-view: failed to download ${file}.xml`, err);
+						console.error(`drawio: failed to download ${file}.xml`, err);
 					}
 					done++;
 					downloadBtn.setText(`Downloading ${done}/${selected.length}…`);

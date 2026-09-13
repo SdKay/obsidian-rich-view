@@ -1,7 +1,7 @@
 {
-    "name": "diagram-view",
+    "name": "rich-view",
     "version": "0.0.12",
-    "description": "Render draw.io (and, in future, other diagram formats) inline in Obsidian notes.",
+    "description": "Render draw.io, Visio (and, in future, other rich file formats — ppt, Word, CAD, ...) inline in Obsidian notes.",
     "main": "main.js",
     "type": "module",
     "scripts": {
@@ -13,15 +13,16 @@
     "keywords": [
         "obsidian",
         "drawio",
+        "visio",
         "diagram"
     ],
     "license": "MIT",
     "author": "sdking.xing",
     "repository": {
         "type": "git",
-        "url": "https://github.com/SdKay/obsidian-diagram-view.git"
+        "url": "https://github.com/SdKay/obsidian-rich-view.git"
     },
-    "homepage": "https://github.com/SdKay/obsidian-diagram-view",
+    "homepage": "https://github.com/SdKay/obsidian-rich-view",
     "dependencies": {
         "@maxgraph/core": "^0.23.0",
         "fflate": "^0.8.3",

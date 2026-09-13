@@ -1,27 +1,29 @@
 ---
-name: obsidian-diagram-view
+name: obsidian-rich-view
 description: >
-  Insert and manage diagrams (draw.io today; more formats planned) in
-  Obsidian vault notes using the diagram-view plugin. Use when the user
-  asks to embed, view, or configure a diagram in a note.
+  Insert and manage rich file previews (draw.io and Visio diagrams today;
+  more formats — PPT, Word, CAD — planned) in Obsidian vault notes using the
+  rich-view plugin. Use when the user asks to embed, view, or configure a
+  diagram or other rich file in a note.
 ---
 
-# Diagram View — Agent Reference
+# Rich View — Agent Reference
 
-`diagram-view` is an Obsidian plugin that renders diagrams inline inside
-fenced `dv` code blocks. Today that means `.drawio` files; the parser/renderer
-layer is split so other formats (e.g. Visio) can be added later without
-changing this syntax.
+`rich-view` is an Obsidian plugin that renders rich file formats inline
+inside fenced `rich-view` code blocks. Today that means `.drawio` and Visio
+`.vsdx` files, both rendered through a shared "drawing" (infinite-canvas)
+viewer; the parser/renderer layer is split by format so unrelated formats
+(e.g. PPT, Word, CAD) can be added later without changing this syntax.
 
-> **Obsidian-only.** The `dv` block will not render in standard Markdown
-> editors or GitHub previews.
+> **Obsidian-only.** The `rich-view` block will not render in standard
+> Markdown editors or GitHub previews.
 
 ---
 
 ## Block syntax
 
 ````markdown
-```dv
+```rich-view
 file=filename.drawio
 ```
 ````
@@ -30,7 +32,7 @@ Parameters are explicit `key=value` pairs, separated by `|`, in any order.
 `file=` is the only required one:
 
 ````markdown
-```dv
+```rich-view
 file=filename.drawio|page=<name>|page-index=<N>|height=<px>|zoom=<percent>|offset=<x>,<y>
 ```
 ````
@@ -55,22 +57,29 @@ by-position fallback.
 
 Minimal — just the filename:
 ````markdown
-```dv
+```rich-view
 file=architecture.drawio
 ```
 ````
 
 Specific page, fixed height:
 ````markdown
-```dv
+```rich-view
 file=architecture.drawio|page=Backend|height=500
 ```
 ````
 
 Saved view with zoom and offset (written by the ⊙ button):
 ````markdown
-```dv
+```rich-view
 file=architecture.drawio|page=Backend|height=500|zoom=80|offset=190,34
+```
+````
+
+A Visio file works identically — just swap the extension:
+````markdown
+```rich-view
+file=architecture.vsdx|page=Overview
 ```
 ````
 
@@ -84,12 +93,12 @@ file=architecture.drawio|page=Backend|height=500|zoom=80|offset=190,34
 
 ```
 old_string: "## Architecture\n\n"
-new_string: "## Architecture\n\n```dv\nfile=architecture.drawio\n```\n\n"
+new_string: "## Architecture\n\n```rich-view\nfile=architecture.drawio\n```\n\n"
 ```
 
 The diagram file must already exist in the vault. If it does not exist,
-tell the user to create it (in draw.io, for `.drawio` files) and place it in
-the vault first.
+tell the user to create it (in draw.io, for `.drawio` files, or in Visio,
+for `.vsdx` files) and place it in the vault first.
 
 ---
 
@@ -105,12 +114,12 @@ the vault first.
 ## Updating parameters
 
 To change a parameter (e.g. switch to a different page or set a fixed height),
-read the file, locate the `dv` block, and replace the whole parameter line —
-every field is independent, so add/remove/edit keys freely:
+read the file, locate the `rich-view` block, and replace the whole parameter
+line — every field is independent, so add/remove/edit keys freely:
 
 ```
-old_string: "```dv\nfile=architecture.drawio\n```"
-new_string: "```dv\nfile=architecture.drawio|page=Backend|height=600\n```"
+old_string: "```rich-view\nfile=architecture.drawio\n```"
+new_string: "```rich-view\nfile=architecture.drawio|page=Backend|height=600\n```"
 ```
 
 Do **not** add a `libs=` field — the plugin manages shape libraries automatically.
@@ -123,9 +132,11 @@ Do **not** add a `libs=` field — the plugin manages shape libraries automatica
 - **Magnifier** — a 🔍 toolbar button lets the user inspect fine detail with a
   cursor-following loupe, independent of the code block's zoom/offset params.
   Nothing an agent needs to configure.
-- **Shape libraries** — if the diagram uses AWS, Azure, Cisco, or other
-  extended shapes, the plugin detects this and prompts the user to download
-  the required library. No agent action needed.
+- **Shape libraries** (`.drawio` only) — if the diagram uses AWS, Azure,
+  Cisco, or other extended shapes, the plugin detects this and prompts the
+  user to download the required library. No agent action needed. Visio has
+  no equivalent concept — its master shapes are embedded in the `.vsdx` file
+  itself.
 - **Dark mode** — automatic.
 - **Multi-page tabs** — automatic when the file has multiple pages.
 
@@ -136,7 +147,8 @@ Do **not** add a `libs=` field — the plugin manages shape libraries automatica
 Shapes in a `.drawio` diagram can carry links to vault notes or external
 URLs. These are stored inside the file itself, not in the code block. The
 plugin's `✎` button lets users edit links interactively — agents do not need
-to manipulate the underlying XML directly.
+to manipulate the underlying XML directly. Visio shape-level hyperlinks are
+not yet supported by this plugin.
 
 ---
 
@@ -144,7 +156,9 @@ to manipulate the underlying XML directly.
 
 - If the user wants to **create or edit** the diagram content (shapes,
   connectors, text), they must use the diagram's native editor (e.g. draw.io
-  desktop for `.drawio` files). This plugin is a **viewer only** — it does
-  not support editing diagram content.
-- If the file is not a supported diagram format (currently only `.drawio`;
-  e.g. an SVG or PNG), use a standard Markdown image embed instead.
+  desktop for `.drawio` files, Microsoft Visio for `.vsdx` files). This
+  plugin is a **viewer only** — it does not support editing diagram content.
+- If the file is not a supported format (currently `.drawio` and `.vsdx`
+  only; e.g. an SVG or PNG), use a standard Markdown image embed instead.
+- If the file is a PPT, Word, CAD, or other non-diagram rich format not yet
+  supported by this plugin, tell the user it's not supported yet.

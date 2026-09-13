@@ -135,7 +135,7 @@ export function parseVisioFile(buffer: ArrayBuffer): VisioFile {
 					const rootShapes = contentDoc.getElementsByTagName('Shapes')[0];
 					if (rootShapes) collectShapes(rootShapes, pageToSvg, zip, mastersPath, masterCache, shapes);
 				} catch (err) {
-					console.error('DiagramView Visio parse (page content):', err);
+					console.error('Rich View Visio parse (page content):', err);
 				}
 			}
 
@@ -377,7 +377,7 @@ function loadMasterInfo(
 		cache.set(masterId, info);
 		return info;
 	} catch (err) {
-		console.error('DiagramView Visio parse (master):', err);
+		console.error('Rich View Visio parse (master):', err);
 		cache.set(masterId, null);
 		return null;
 	}

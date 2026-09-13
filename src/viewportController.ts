@@ -1,5 +1,5 @@
 import { Component } from 'obsidian';
-import type { DiagramViewSettings } from './settings';
+import type { RichViewSettings } from './settings';
 
 /**
  * Bridge to the committed @maxgraph view.  The controller owns the *uncommitted*
@@ -21,7 +21,7 @@ interface PointerSample { x: number; y: number; }
 
 /**
  * Owns viewport pan/zoom for the diagram.  Gestures update a CSS transform on
- * `panEl` (`--dv-tx/-ty/-scale`) for instant GPU-composited feedback; once the
+ * `panEl` (`--dw-tx/-ty/-scale`) for instant GPU-composited feedback; once the
  * gesture ends, the transform is folded into the @maxgraph renderer via the
  * host in one redraw.
  *
@@ -67,7 +67,7 @@ export class PanZoomController extends Component {
 		private readonly graphEl: HTMLElement,
 		private readonly panEl: HTMLElement,
 		private readonly host: ViewportHost,
-		private readonly getSettings: () => DiagramViewSettings,
+		private readonly getSettings: () => RichViewSettings,
 	) {
 		super();
 	}
@@ -118,7 +118,7 @@ export class PanZoomController extends Component {
 	clearVisual(): void {
 		this.cancelCommit();
 		this.vScale = 1; this.vTx = 0; this.vTy = 0;
-		this.panEl.setCssProps({ '--dv-tx': '0px', '--dv-ty': '0px', '--dv-scale': '1' });
+		this.panEl.setCssProps({ '--dw-tx': '0px', '--dw-ty': '0px', '--dw-scale': '1' });
 	}
 
 	/**
@@ -269,9 +269,9 @@ export class PanZoomController extends Component {
 		this.applyRaf = window.requestAnimationFrame(() => {
 			this.applyRaf = 0;
 			this.panEl.setCssProps({
-				'--dv-tx': `${this.vTx}px`,
-				'--dv-ty': `${this.vTy}px`,
-				'--dv-scale': `${this.vScale}`,
+				'--dw-tx': `${this.vTx}px`,
+				'--dw-ty': `${this.vTy}px`,
+				'--dw-scale': `${this.vScale}`,
 			});
 			this.host.onViewChange();
 		});
@@ -303,7 +303,7 @@ export class PanZoomController extends Component {
 		const dfx = this.vTx + this.vScale * d0.x;
 		const dfy = this.vTy + this.vScale * d0.y;
 		this.vScale = 1; this.vTx = 0; this.vTy = 0;
-		this.panEl.setCssProps({ '--dv-tx': '0px', '--dv-ty': '0px', '--dv-scale': '1' });
+		this.panEl.setCssProps({ '--dw-tx': '0px', '--dw-ty': '0px', '--dw-scale': '1' });
 		this.host.commitView(sf * 100, dfx, dfy);
 	}
 }
