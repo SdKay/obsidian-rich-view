@@ -302,7 +302,7 @@ export class DrawingViewer extends Component {
 		// HTML-label overlay cannot interfere with its position.
 		const hud = this.container.createDiv('drawing-view-hud');
 
-		const openBtn = hud.createEl('span', {
+		const openBtn = hud.createSpan({
 			cls: 'drawing-view-open-btn',
 			attr: { 'role': 'button', 'aria-label': t('openExternal'), 'tabindex': '0' },
 		});
@@ -317,7 +317,7 @@ export class DrawingViewer extends Component {
 		// has pinned an explicit zoom/offset (double-click's "reset" restores
 		// that pinned view instead — see resetView()). This is the only way
 		// back to auto-fit once a view has been pinned via ⊙.
-		const fitBtn = hud.createEl('span', {
+		const fitBtn = hud.createSpan({
 			cls: 'drawing-view-fit-btn',
 			attr: { 'role': 'button', 'aria-label': t('autoFit'), 'tabindex': '0' },
 		});
@@ -328,7 +328,7 @@ export class DrawingViewer extends Component {
 			if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.autoFitNow(); }
 		});
 
-		this.magnifierBtnEl = hud.createEl('span', {
+		this.magnifierBtnEl = hud.createSpan({
 			cls: 'drawing-view-magnifier-btn',
 			attr: { 'role': 'button', 'aria-label': t('magnifier'), 'tabindex': '0' },
 		});
@@ -340,7 +340,7 @@ export class DrawingViewer extends Component {
 		});
 
 		if (this.onUpdate) {
-			const btn = hud.createEl('span', {
+			const btn = hud.createSpan({
 				cls: 'drawing-view-update-btn',
 				attr: { 'role': 'button', 'aria-label': t('applyView'), 'tabindex': '0' },
 			});
@@ -369,12 +369,12 @@ export class DrawingViewer extends Component {
 		}
 
 		this.tooltipEl = this.container.createDiv('drawing-view-link-tooltip');
-		const tooltipEditBtn = this.tooltipEl.createEl('span', {
+		const tooltipEditBtn = this.tooltipEl.createSpan({
 			cls: 'drawing-view-tooltip-edit',
 			attr: { role: 'button', tabindex: '0', 'aria-label': t('editLink') },
 		});
 		setTooltip(tooltipEditBtn, t('editLink'));
-		this.tooltipTextEl = this.tooltipEl.createEl('span', { cls: 'drawing-view-tooltip-text' });
+		this.tooltipTextEl = this.tooltipEl.createSpan({ cls: 'drawing-view-tooltip-text' });
 		tooltipEditBtn.setText('✎');
 
 		// Banner for missing stencil lib notifications.
@@ -661,13 +661,13 @@ export class DrawingViewer extends Component {
 		if (!banner) return;
 		banner.empty();
 
-		const msg = banner.createEl('span', { cls: 'drawio-libs-banner-msg' });
+		const msg = banner.createSpan({ cls: 'drawio-libs-banner-msg' });
 		msg.appendText(`⚠ Missing shape libraries: ${names.join(', ')} `);
-		msg.createEl('span', { cls: 'drawio-libs-banner-hint', text: '— download here or in plugin settings' });
+		msg.createSpan({ cls: 'drawio-libs-banner-hint', text: '— download here or in plugin settings' });
 
 		const actions = banner.createDiv('drawio-libs-banner-actions');
 
-		const dlBtn = actions.createEl('span', {
+		const dlBtn = actions.createSpan({
 			cls: 'drawio-libs-banner-btn drawio-libs-banner-btn-primary',
 			attr: { role: 'button', tabindex: '0' },
 			text: 'Download',
@@ -677,7 +677,7 @@ export class DrawingViewer extends Component {
 			if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); void this.downloadPending(); }
 		});
 
-		const settingsBtn = actions.createEl('span', {
+		const settingsBtn = actions.createSpan({
 			cls: 'drawio-libs-banner-btn',
 			attr: { role: 'button', tabindex: '0' },
 			text: 'Settings',
@@ -687,7 +687,7 @@ export class DrawingViewer extends Component {
 			if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.openPluginSettings(); }
 		});
 
-		const dismissBtn = actions.createEl('span', {
+		const dismissBtn = actions.createSpan({
 			cls: 'drawio-libs-banner-btn',
 			attr: { role: 'button', tabindex: '0' },
 			text: '✕',
@@ -715,7 +715,7 @@ export class DrawingViewer extends Component {
 		const images = this.pendingImages;
 
 		banner.empty();
-		const msg = banner.createEl('span', { cls: 'drawio-libs-banner-msg', text: 'Downloading…' });
+		const msg = banner.createSpan({ cls: 'drawio-libs-banner-msg', text: 'Downloading…' });
 
 		const results = await Promise.allSettled([
 			...stencils.map(lib => stencilManager.downloadLib(lib, adapter, this.stencilsDir)),
@@ -728,11 +728,11 @@ export class DrawingViewer extends Component {
 
 		if (results.some(r => r.status === 'rejected')) {
 			banner.empty();
-			banner.createEl('span', {
+			banner.createSpan({
 				cls: 'drawio-libs-banner-msg drawio-libs-banner-error',
 				text: 'Some downloads failed — check your network and reload.',
 			});
-			const dismiss = banner.createDiv('drawio-libs-banner-actions').createEl('span', {
+			const dismiss = banner.createDiv('drawio-libs-banner-actions').createSpan({
 				cls: 'drawio-libs-banner-btn', attr: { role: 'button', tabindex: '0' }, text: '✕',
 			});
 			this.registerDomEvent(dismiss, 'click', () => { banner.removeClass('is-visible'); });

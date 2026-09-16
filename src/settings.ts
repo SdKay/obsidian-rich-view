@@ -1,4 +1,5 @@
 import { App, normalizePath, PluginSettingTab, Setting } from 'obsidian';
+import type { SettingDefinitionItem } from 'obsidian';
 import type RichViewPlugin from './main';
 import { OFFICIAL_LIBS, stencilManager } from './stencilManager';
 
@@ -20,6 +21,16 @@ export const DEFAULT_SETTINGS: RichViewSettings = {
 	customStencilDir: '',
 };
 
+const ZOOM_MODIFIER_OPTIONS: Record<ZoomModifier, string> = {
+	none: 'Scroll wheel',
+	ctrl: 'Ctrl + scroll wheel',
+};
+
+const PAN_MODIFIER_OPTIONS: Record<PanModifier, string> = {
+	none: 'Drag to pan · Ctrl+click to follow links',
+	ctrl: 'Click to follow links · Ctrl+drag to pan',
+};
+
 export class RichViewSettingTab extends PluginSettingTab {
 	private readonly plugin: RichViewPlugin;
 
@@ -28,6 +39,81 @@ export class RichViewSettingTab extends PluginSettingTab {
 		this.plugin = plugin;
 	}
 
+	/**
+	 * Declarative settings (Obsidian 1.13+) — surfaces every control in the
+	 * app's settings search. `display()` below is kept purely as the
+	 * fallback this plugin's minAppVersion (1.8.7) still needs: hosts older
+	 * than 1.13.0 have no `getSettingDefinitions` and call `display()`
+	 * directly instead.
+	 */
+	getSettingDefinitions(): SettingDefinitionItem[] {
+		return [
+			{
+				name: 'Zoom modifier key',
+				desc: 'How the scroll wheel zooms a diagram. Choose "Ctrl + scroll" to avoid zooming while scrolling through the note.',
+				control: {
+					type: 'dropdown',
+					key: 'zoomModifier',
+					options: ZOOM_MODIFIER_OPTIONS,
+					defaultValue: DEFAULT_SETTINGS.zoomModifier,
+				},
+			},
+			{
+				name: 'Click behavior',
+				desc:
+					'Controls how clicking and dragging interact with links set on shapes. ' +
+					'"Drag to pan" keeps current pan behavior and uses Ctrl+click to follow links. ' +
+					'"Click to follow links" makes a plain click follow the link on a shape, and requires Ctrl+drag to pan.',
+				control: {
+					type: 'dropdown',
+					key: 'panModifier',
+					options: PAN_MODIFIER_OPTIONS,
+					defaultValue: DEFAULT_SETTINGS.panModifier,
+				},
+			},
+			{
+				type: 'group',
+				heading: 'Shape libraries',
+				items: [
+					{
+						name: 'Custom library folder',
+						desc:
+							'Vault-relative path to a folder containing your own stencil .xml files. ' +
+							'Leave empty to disable. Example: drawio-stencils',
+						control: {
+							type: 'text',
+							key: 'customStencilDir',
+							placeholder: 'Drawio-stencils',
+							defaultValue: DEFAULT_SETTINGS.customStencilDir,
+						},
+					},
+					{
+						// Renders as a full-width custom block (header buttons + a per-library
+						// checkbox list), not a name/desc/control row — settingEl is cleared
+						// and rebuilt in renderShapeLibrariesInto. name/desc here only feed
+						// the settings-search index.
+						name: 'Official libraries',
+						desc: 'Third-party draw.io shape libraries, downloaded on demand.',
+						render: setting => {
+							setting.settingEl.empty();
+							this.renderShapeLibrariesInto(setting.settingEl);
+						},
+					},
+				],
+			},
+		];
+	}
+
+	getControlValue(key: string): unknown {
+		return (this.plugin.settings as unknown as Record<string, unknown>)[key];
+	}
+
+	async setControlValue(key: string, value: unknown): Promise<void> {
+		(this.plugin.settings as unknown as Record<string, unknown>)[key] = value;
+		await this.plugin.saveSettings();
+	}
+
+	/** @deprecated Fallback for Obsidian < 1.13.0 — see getSettingDefinitions(). */
 	display(): void {
 		const { containerEl } = this;
 		containerEl.empty();
@@ -37,16 +123,13 @@ export class RichViewSettingTab extends PluginSettingTab {
 			.setDesc(
 				'How the scroll wheel zooms a diagram. Choose "Ctrl + scroll" to avoid zooming while scrolling through the note.',
 			)
-			.addDropdown(dd =>
-				dd
-					.addOption('none', 'Scroll wheel')
-					.addOption('ctrl', 'Ctrl + scroll wheel')
-					.setValue(this.plugin.settings.zoomModifier)
-					.onChange(async value => {
-						this.plugin.settings.zoomModifier = value as ZoomModifier;
-						await this.plugin.saveSettings();
-					}),
-			);
+			.addDropdown(dd => {
+				for (const [value, label] of Object.entries(ZOOM_MODIFIER_OPTIONS)) dd.addOption(value, label);
+				dd.setValue(this.plugin.settings.zoomModifier).onChange(async value => {
+					this.plugin.settings.zoomModifier = value as ZoomModifier;
+					await this.plugin.saveSettings();
+				});
+			});
 
 		new Setting(containerEl)
 			.setName('Click behavior')
@@ -55,18 +138,13 @@ export class RichViewSettingTab extends PluginSettingTab {
 				'"Drag to pan" keeps current pan behavior and uses Ctrl+click to follow links. ' +
 				'"Click to follow links" makes a plain click follow the link on a shape, and requires Ctrl+drag to pan.',
 			)
-			.addDropdown(dd =>
-				dd
-					.addOption('none', 'Drag to pan · Ctrl+click to follow links')
-					.addOption('ctrl', 'Click to follow links · Ctrl+drag to pan')
-					.setValue(this.plugin.settings.panModifier)
-					.onChange(async value => {
-						this.plugin.settings.panModifier = value as PanModifier;
-						await this.plugin.saveSettings();
-					}),
-			);
-
-		// ── Shape Libraries ───────────────────────────────────────
+			.addDropdown(dd => {
+				for (const [value, label] of Object.entries(PAN_MODIFIER_OPTIONS)) dd.addOption(value, label);
+				dd.setValue(this.plugin.settings.panModifier).onChange(async value => {
+					this.plugin.settings.panModifier = value as PanModifier;
+					await this.plugin.saveSettings();
+				});
+			});
 
 		new Setting(containerEl).setName('Shape libraries').setHeading();
 
@@ -86,14 +164,18 @@ export class RichViewSettingTab extends PluginSettingTab {
 					}),
 			);
 
-		// Official library list ────────────────────────────────────
+		this.renderShapeLibrariesInto(containerEl);
+	}
+
+	/** Builds the header buttons + per-library checkbox list + "Delete all" row into `root`. Shared by the declarative render() entry and the display() fallback. */
+	private renderShapeLibrariesInto(root: HTMLElement): void {
 		const stencilsDir = normalizePath(
 			`${this.plugin.app.vault.configDir}/plugins/${this.plugin.manifest.id}/stencils`,
 		);
 		const adapter = this.plugin.app.vault.adapter;
 
-		const libsHeader = containerEl.createDiv({ cls: 'drawio-libs-header' });
-		libsHeader.createEl('span', { text: 'Official libraries' });
+		const libsHeader = root.createDiv({ cls: 'drawio-libs-header' });
+		libsHeader.createSpan({ text: 'Official libraries' });
 		const headerControls = libsHeader.createDiv({ cls: 'drawio-libs-controls' });
 
 		const selectAllBtn   = headerControls.createEl('button', { text: 'Select all' });
@@ -106,7 +188,7 @@ export class RichViewSettingTab extends PluginSettingTab {
 		const refreshBadges = async () => {
 			const localLibs = await stencilManager.getLocalLibs(adapter, stencilsDir);
 			checkboxMap.forEach((_, file) => {
-				const row = containerEl.querySelector(`.drawio-lib-row[data-file="${file}"]`);
+				const row = root.querySelector(`.drawio-lib-row[data-file="${file}"]`);
 				const badge = row?.querySelector('.drawio-lib-badge');
 				if (!badge) return;
 				const isLocal = localLibs.includes(file);
@@ -115,19 +197,19 @@ export class RichViewSettingTab extends PluginSettingTab {
 			});
 		};
 
-		const listEl = containerEl.createDiv({ cls: 'drawio-libs-list' });
+		const listEl = root.createDiv({ cls: 'drawio-libs-list' });
 		let currentCategory = '';
 		for (const entry of OFFICIAL_LIBS) {
 			if (entry.category !== currentCategory) {
 				currentCategory = entry.category;
-				listEl.createEl('div', { cls: 'drawio-libs-category', text: entry.category });
+				listEl.createDiv({ cls: 'drawio-libs-category', text: entry.category });
 			}
 			const row = listEl.createDiv({ cls: 'drawio-lib-row', attr: { 'data-file': entry.file } });
 			const checkbox = row.createEl('input', { attr: { type: 'checkbox' } });
 			checkboxMap.set(entry.file, checkbox);
-			row.createEl('span', { cls: 'drawio-lib-name', text: entry.name });
-			row.createEl('span', { cls: 'drawio-lib-file', text: `(${entry.file}.xml)` });
-			row.createEl('span', { cls: 'drawio-lib-badge', text: 'Not downloaded' });
+			row.createSpan({ cls: 'drawio-lib-name', text: entry.name });
+			row.createSpan({ cls: 'drawio-lib-file', text: `(${entry.file}.xml)` });
+			row.createSpan({ cls: 'drawio-lib-badge', text: 'Not downloaded' });
 		}
 
 		void refreshBadges();
@@ -170,7 +252,7 @@ export class RichViewSettingTab extends PluginSettingTab {
 			})();
 		});
 
-		new Setting(containerEl)
+		new Setting(root)
 			.setName('Delete all downloaded libraries')
 			.setDesc('Remove all stencil XML files downloaded to the plugin folder.')
 			.addButton(btn =>

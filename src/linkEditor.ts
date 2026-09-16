@@ -35,9 +35,9 @@ export class LinkEditorModal extends SuggestModal<LinkItem> {
 
 	renderSuggestion(item: LinkItem, el: HTMLElement): void {
 		if (typeof item === 'string') {
-			el.createEl('div', { text: `URL: ${item}` });
+			el.createDiv({ text: `URL: ${item}` });
 		} else {
-			el.createEl('div', { text: item.basename });
+			el.createDiv({ text: item.basename });
 			el.createEl('small', { cls: 'drawio-link-editor-path', text: item.path });
 		}
 	}

@@ -130,7 +130,7 @@ let measureCtx: CanvasRenderingContext2D | null | undefined;
 /** Lazily created, reused canvas 2D context for text-width measurement. `null` (not re-attempted) if canvas 2D is unavailable (e.g. under jsdom in tests) — callers must treat that as "can't measure" and skip wrapping. */
 function getMeasureContext(): CanvasRenderingContext2D | null {
 	if (measureCtx === undefined) {
-		measureCtx = activeDocument.createElement('canvas').getContext('2d');
+		measureCtx = createEl('canvas').getContext('2d');
 	}
 	return measureCtx;
 }
