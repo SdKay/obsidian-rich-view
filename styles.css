@@ -410,6 +410,14 @@
 }
 
 /* ── Settings: Shape Libraries section ───────────────────── */
+/* The declarative settings API renders this into a .setting-item row,
+   whose base layout is a two-column flex (name/desc | control) — override
+   it back to a plain block so the header/list stack normally instead of
+   competing for a flex row's single line. */
+.drawio-libs-setting-block {
+    display: block;
+}
+
 .drawio-libs-header {
     display: flex;
     align-items: center;

@@ -96,6 +96,7 @@ export class RichViewSettingTab extends PluginSettingTab {
 						desc: 'Third-party draw.io shape libraries, downloaded on demand.',
 						render: setting => {
 							setting.settingEl.empty();
+							setting.settingEl.addClass('drawio-libs-setting-block');
 							this.renderShapeLibrariesInto(setting.settingEl);
 						},
 					},
