@@ -87,3 +87,57 @@ export function parseViewParams(paramStr: string): ViewOptions {
 	}
 	return opts;
 }
+
+/**
+ * Detects and converts the pre-rewrite positional param format (e.g.
+ * `file.drawio|440px|Overview|54%|(418, 15)`), which `parseViewParams`
+ * above cannot read at all — every bare token there has no `=`, so
+ * `parseViewParams` silently ignores each one past a bare filename,
+ * degrading any note still in this format to file-only defaults.
+ *
+ * Reproduces the OLD parser's own bare-token classification (recovered
+ * verbatim from git history, commit 4140dd4:src/parser.ts) rather than
+ * re-deciding it — same classification order, same regexes, same
+ * page-name catch-all. This matters because that old parser deliberately
+ * shape-sniffed (unlike the current `page=`/`page-index=` split — see this
+ * file's docstring on why that's normally wrong), and a legacy string can
+ * only be round-tripped correctly by reproducing exactly what produced it.
+ *
+ * Returns `null` if `paramStr` already looks like the current format (any
+ * segment contains `=`) or doesn't look like the legacy format at all (no
+ * token matched a diagram file extension) — the caller should leave such
+ * blocks untouched.
+ */
+export function migrateLegacyParams(paramStr: string): string | null {
+	const trimmed = paramStr.trim();
+	if (!trimmed) return null;
+
+	const tokens = trimmed.split('|').map(s => s.trim()).filter(Boolean);
+	if (tokens.some(t => t.includes('='))) return null; // already current format
+
+	const parts: string[] = [];
+	let sawFile = false;
+
+	for (const raw of tokens) {
+		if (/\.(drawio|xml|vsdx)$/i.test(raw)) {
+			parts.push(`file=${raw}`);
+			sawFile = true;
+		} else if (/^page[-\s]?(\d+)$/i.test(raw)) {
+			const m = raw.match(/(\d+)/);
+			if (m) parts.push(`page-index=${m[1]}`);
+		} else if (/^(\d+(?:\.\d+)?)%$/.test(raw)) {
+			parts.push(`zoom=${raw.slice(0, -1)}`);
+		} else {
+			const offsetM = raw.match(/^\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)$/);
+			if (offsetM) {
+				parts.push(`offset=${offsetM[1]},${offsetM[2]}`);
+			} else if (/^\d+px$/i.test(raw)) {
+				parts.push(`height=${raw.slice(0, -2)}`);
+			} else {
+				parts.push(`page=${raw}`);
+			}
+		}
+	}
+
+	return sawFile ? parts.join('|') : null;
+}

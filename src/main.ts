@@ -1,7 +1,78 @@
-import { MarkdownRenderChild, MarkdownSectionInformation, Plugin, TFile, normalizePath } from 'obsidian';
-import { parseViewParams, type ViewOptions } from './viewParams';
+import { MarkdownRenderChild, MarkdownSectionInformation, Plugin, TFile, normalizePath, setTooltip } from 'obsidian';
+import { migrateLegacyParams, parseViewParams, type ViewOptions } from './viewParams';
 import { DrawingViewer } from './drawingViewer';
 import { DEFAULT_SETTINGS, RichViewSettingTab, type RichViewSettings } from './settings';
+import { openDiagramFilePicker } from './diagramFilePicker';
+import { t } from './i18n';
+
+/**
+ * Replace a `rich-view` code block's parameter line with `newParams`,
+ * preserving indentation. Shared by the live viewer's write-back paths (⊙
+ * button, resize handle — both via RichCodeBlock.onload's onUpdate) and the
+ * blank-block import button / legacy-format migration below, which run
+ * before any RichCodeBlock/DrawingViewer instance exists for this block.
+ */
+function rewriteBlockParams(
+	content: string,
+	newParams: string,
+	sectionInfo: MarkdownSectionInformation | null,
+	originalSource: string,
+): string {
+	if (sectionInfo) {
+		// Precise line-based replacement using the section's known position.
+		// sectionInfo.lineStart = opening fence line; lineEnd = closing fence.
+		const sep = content.includes('\r\n') ? '\r\n' : '\n';
+		const lines = content.split(/\r?\n/);
+		const indent = lines[sectionInfo.lineStart]?.match(/^[ \t]*/)?.[0] ?? '';
+		const before = lines.slice(0, sectionInfo.lineStart + 1);
+		const after  = lines.slice(sectionInfo.lineEnd);
+		return [...before, indent + newParams, ...after].join(sep);
+	}
+	// Fallback: replace only the first block matching the original content.
+	const escContent = originalSource.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	const pattern = new RegExp(
+		'([ \\t]*)(`{3,})rich-view[^\\n]*[\\r\\n]+' +
+		'[ \\t]*' + escContent + '[ \\t]*[\\r\\n]+' +
+		'[ \\t]*\\2',
+		'g',
+	);
+	let replaced = false;
+	return content.replace(pattern, (whole, indent, fence) => {
+		if (replaced) return whole;
+		replaced = true;
+		return `${indent}${fence}rich-view\n${indent}${newParams}\n${indent}${fence}`;
+	});
+}
+
+/** Look up the note by path and atomically rewrite this block's params into it. */
+async function writeBlockParams(
+	app: typeof Plugin.prototype.app,
+	sourcePath: string,
+	sectionInfo: MarkdownSectionInformation | null,
+	originalSource: string,
+	newParams: string,
+): Promise<void> {
+	const file = app.vault.getAbstractFileByPath(sourcePath);
+	if (!(file instanceof TFile)) return;
+	// Vault.process edits the file atomically (no races with other plugins);
+	// it's the recommended API for content transforms not tied to the cursor.
+	await app.vault.process(file, content => rewriteBlockParams(content, newParams, sectionInfo, originalSource));
+}
+
+/** Renders the "Import file" prompt shown for a completely empty rich-view block. */
+function renderImportPrompt(el: HTMLElement, onClick: () => void): void {
+	const wrap = el.createDiv({ cls: 'drawing-view-import-prompt' });
+	const btn = wrap.createSpan({
+		cls: 'drawing-view-import-btn',
+		attr: { role: 'button', tabindex: '0', 'aria-label': t('importFile') },
+		text: t('importFile'),
+	});
+	setTooltip(btn, t('importFile'));
+	btn.addEventListener('click', onClick);
+	btn.addEventListener('keydown', (e: KeyboardEvent) => {
+		if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); }
+	});
+}
 
 class RichCodeBlock extends MarkdownRenderChild {
 	constructor(
@@ -19,45 +90,12 @@ class RichCodeBlock extends MarkdownRenderChild {
 
 	onload(): void {
 		const onUpdate = async (newParams: string) => {
-			const file = this.app_.vault.getAbstractFileByPath(this.sourcePath);
-			if (!(file instanceof TFile)) return;
-			// Vault.process edits the file atomically (no races with other plugins);
-			// it's the recommended API for content transforms not tied to the cursor.
-			await this.app_.vault.process(file, content => this.rewrite(content, newParams));
+			await writeBlockParams(this.app_, this.sourcePath, this.sectionInfo, this.originalSource, newParams);
 		};
 
 		const viewer = new DrawingViewer(this.app_, this.containerEl, this.options, this.settings, this.sourcePath, this.stencilsDir, onUpdate);
 		this.addChild(viewer);
 		viewer.load();
-	}
-
-	/** Replace this block's parameter line with `newParams`, preserving indentation. */
-	private rewrite(content: string, newParams: string): string {
-		if (this.sectionInfo) {
-			// Precise line-based replacement using the section's known position.
-			// sectionInfo.lineStart = opening fence line; lineEnd = closing fence.
-			const sep = content.includes('\r\n') ? '\r\n' : '\n';
-			const lines = content.split(/\r?\n/);
-			const indent = lines[this.sectionInfo.lineStart]?.match(/^[ \t]*/)?.[0] ?? '';
-			const before = lines.slice(0, this.sectionInfo.lineStart + 1);
-			const after  = lines.slice(this.sectionInfo.lineEnd);
-			return [...before, indent + newParams, ...after].join(sep);
-		}
-		// Fallback: replace only the first block matching the original content.
-		const escContent = this.originalSource.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-		if (!escContent) return content;
-		const pattern = new RegExp(
-			'([ \\t]*)(`{3,})rich-view[^\\n]*[\\r\\n]+' +
-			'[ \\t]*' + escContent + '[ \\t]*[\\r\\n]+' +
-			'[ \\t]*\\2',
-			'g',
-		);
-		let replaced = false;
-		return content.replace(pattern, (whole, indent, fence) => {
-			if (replaced) return whole;
-			replaced = true;
-			return `${indent}${fence}rich-view\n${indent}${newParams}\n${indent}${fence}`;
-		});
 	}
 }
 
@@ -71,7 +109,25 @@ export default class RichViewPlugin extends Plugin {
 		const stencilsDir = normalizePath(`${this.app.vault.configDir}/plugins/${this.manifest.id}/stencils`);
 
 		this.registerMarkdownCodeBlockProcessor('rich-view', (source, el, ctx) => {
-			const options = parseViewParams(source.trim());
+			const trimmed = source.trim();
+
+			if (!trimmed) {
+				renderImportPrompt(el, () => openDiagramFilePicker(this.app, (file) => {
+					const sectionInfo = ctx.getSectionInfo(el);
+					void writeBlockParams(this.app, ctx.sourcePath, sectionInfo, source, `file=${file.path}`);
+				}));
+				return;
+			}
+
+			// Migrate the pre-viewParams.ts positional format (e.g.
+			// "file.drawio|440px|Overview|54%|(418, 15)") if present — silently,
+			// same write-back path as the import button above.
+			const migrated = migrateLegacyParams(trimmed);
+			const options = parseViewParams(migrated ?? trimmed);
+			if (migrated) {
+				void writeBlockParams(this.app, ctx.sourcePath, ctx.getSectionInfo(el), source, migrated);
+			}
+
 			if (!options.filename) {
 				el.createDiv({ cls: 'drawing-view-error', text: 'No filename specified. Use `file=<name>`.' });
 				return;

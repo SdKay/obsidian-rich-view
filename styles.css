@@ -370,6 +370,39 @@
     font-size: var(--font-ui-small);
 }
 
+/* ── Import-file prompt (blank rich-view block) ─────────── */
+.drawing-view-import-prompt {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 12px;
+}
+
+.drawing-view-import-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 32px;
+    border: none;
+    border-radius: var(--radius-m);
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    font-size: var(--font-ui-medium);
+    font-weight: var(--font-semibold);
+    cursor: pointer;
+    user-select: none;
+}
+
+.drawing-view-import-btn:hover {
+    background: var(--interactive-accent-hover);
+    color: var(--text-on-accent);
+}
+
+.drawing-view-import-btn:focus-visible {
+    outline: 2px solid var(--interactive-accent);
+    outline-offset: 1px;
+}
+
 /* ── "Apply view" button ─────────────────────────────────── */
 /* Lives inside .drawing-view-hud, left of the status text.
    Prefix .drawing-view-hud gives enough specificity to beat Obsidian's

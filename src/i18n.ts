@@ -11,6 +11,9 @@ const STRINGS = {
 	editLink: { en: 'Edit link', zh: '编辑链接' },
 	resizeHandle: { en: 'Drag to resize height', zh: '拖动调整高度' },
 	magnifier: { en: 'Magnifier (+/- to resize, Esc to exit)', zh: '放大镜（+/- 调整范围，Esc 退出）' },
+	importFile: { en: 'Import file', zh: '导入文件' },
+	importFilePickerPlaceholder: { en: 'Search .drawio / .vsdx files…', zh: '搜索 .drawio / .vsdx 文件…' },
+	noDiagramFilesInVault: { en: 'No .drawio or .vsdx files found in this vault.', zh: '当前仓库中没有 .drawio 或 .vsdx 文件。' },
 } satisfies Record<string, { en: string; zh: string }>;
 
 export function t(key: keyof typeof STRINGS): string {
