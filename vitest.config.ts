@@ -1,6 +1,11 @@
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
+	resolve: {
+		// `obsidian` ships types only; modules that import it at runtime get this stub in tests.
+		alias: { obsidian: fileURLToPath(new URL('./test/stubs/obsidian.ts', import.meta.url)) },
+	},
 	test: {
 		globals: true,
 		// This project's parsing modules (parser.ts, visioParser.ts) use

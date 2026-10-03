@@ -1,5 +1,5 @@
-/* ── Viewer container ────────────────────────────────────── */
-.drawing-view-container {
+/* ── Viewer frame (shared by every format) ──────────────── */
+.rich-view-frame {
     display: flex;
     flex-direction: column;
     width: 100%;
@@ -12,30 +12,142 @@
     position: relative;
 }
 
-/* ── Bottom-edge resize handle ───────────────────────────── */
-.drawing-view-resize-handle {
+.rich-view-frame.is-fullscreen {
+    width: 100vw;
+    height: 100vh;
+    border: none;
+    border-radius: 0;
+}
+
+.rich-view-body {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ── Status bar ──────────────────────────────────────────── */
+.rich-view-statusbar {
+    position: relative;
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: row;
+    align-items: stretch;
+    height: 28px;
+    border-top: 1px solid var(--background-modifier-border);
+    background: var(--background-secondary);
+    font-size: var(--font-ui-small);
+    color: var(--text-muted);
+}
+
+.rich-view-tabs {
+    display: flex;
+    flex: 1 1 0;
+    min-width: 0;
+    flex-direction: row;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.rich-view-tab {
+    flex: 0 0 auto;
+    padding: 0 10px;
+    min-width: 44px;
+    line-height: 28px;
+    color: var(--text-muted);
+    border-right: 1px solid var(--background-modifier-border);
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.rich-view-tab:hover {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+.rich-view-tab.is-active {
+    background: var(--background-primary);
+    color: var(--text-normal);
+    box-shadow: inset 0 -2px 0 var(--interactive-accent);
+}
+
+.rich-view-tab:focus-visible {
+    outline: 2px solid var(--interactive-accent);
+    outline-offset: -2px;
+}
+
+.rich-view-status {
+    flex: 0 0 auto;
+    align-self: center;
+    padding: 0 8px;
+    white-space: nowrap;
+    font-size: var(--font-ui-smaller);
+}
+
+.rich-view-actions {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: row;
+    align-items: center;
+    padding-right: 4px;
+}
+
+.rich-view-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 22px;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+.rich-view-action .svg-icon {
+    width: 15px;
+    height: 15px;
+}
+
+.rich-view-action:hover,
+.rich-view-action.is-active {
+    color: var(--interactive-accent);
+}
+
+.rich-view-action:focus-visible {
+    outline: 2px solid var(--interactive-accent);
+    outline-offset: -2px;
+}
+
+.rich-view-action-divider {
+    align-self: center;
+    width: 1px;
+    height: 14px;
+    margin: 0 4px;
+    background: var(--background-modifier-border);
+}
+
+/* ── Height handle (status bar's bottom inner edge) ─────── */
+.rich-view-resize-handle {
     position: absolute;
     left: 0;
     right: 0;
     bottom: 0;
-    height: 8px;
+    height: 6px;
     cursor: ns-resize;
-    z-index: 11;
-    /* A subtle grip hint centred on the bottom edge. */
+    touch-action: none;
     background:
-        linear-gradient(var(--background-modifier-border), var(--background-modifier-border))
-        no-repeat center / 32px 2px;
-    opacity: 0;
+        linear-gradient(var(--text-faint), var(--text-faint))
+        no-repeat center / 28px 2px;
+    opacity: 0.35;
     transition: opacity 0.12s ease;
 }
 
-.drawing-view-container:hover .drawing-view-resize-handle,
-.drawing-view-container.is-resizing .drawing-view-resize-handle {
-    opacity: 0.7;
-}
-
-.drawing-view-container .drawing-view-resize-handle:hover {
+.rich-view-resize-handle:hover,
+.rich-view-frame.is-resizing .rich-view-resize-handle {
     opacity: 1;
+    background:
+        linear-gradient(var(--color-blue), var(--color-blue))
+        no-repeat center / 28px 2px;
 }
 
 /* ── Graph area ──────────────────────────────────────────── */
@@ -165,77 +277,6 @@
    Applied to the clipping viewport so border/HUD/tabs are unaffected. */
 .theme-dark .drawing-view-graph {
     filter: invert(1) hue-rotate(180deg);
-}
-
-/* ── HUD (apply button + status bar) ─────────────────────── */
-/* Sibling of .drawing-view-graph, absolutely placed within .drawing-view-container.
-   Stays clear of @maxgraph/core's internal HTML-label overlay layer. */
-.drawing-view-hud {
-    position: absolute;
-    bottom: 4px;
-    right: 6px;
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    font-size: var(--font-ui-smaller);
-    background: color-mix(in srgb, var(--background-primary) 85%, transparent);
-    border-radius: var(--radius-s);
-    overflow: hidden;
-    pointer-events: none;
-    z-index: 10;
-    white-space: nowrap;
-}
-
-/* Lift the HUD above the 28 px tab bar. */
-.drawing-view-container.has-tabs .drawing-view-hud {
-    bottom: 32px;
-}
-
-.drawing-view-hud .drawing-view-status {
-    padding: 1px 5px;
-    color: var(--text-muted);
-    background: transparent;
-}
-
-/* ── Page tabs ───────────────────────────────────────────── */
-.drawing-view-tabs {
-    display: flex;
-    flex-direction: row;
-    flex-shrink: 0;
-    overflow: hidden;
-    border-top: 1px solid var(--background-modifier-border);
-    background: var(--background-secondary);
-}
-
-.drawing-view-tab {
-    flex-shrink: 0;
-    padding: 0 10px;
-    height: 28px;
-    min-width: 44px;
-    font-size: var(--font-ui-small);
-    color: var(--text-muted);
-    background: transparent;
-    border: none;
-    border-right: 1px solid var(--background-modifier-border);
-    cursor: pointer;
-    white-space: nowrap;
-    line-height: 28px;
-}
-
-.drawing-view-tab:hover {
-    background: var(--background-modifier-hover);
-    color: var(--text-normal);
-}
-
-.drawing-view-tab.is-active {
-    background: var(--background-primary);
-    color: var(--text-normal);
-    border-bottom: 2px solid var(--interactive-accent);
-}
-
-.drawing-view-tab:focus-visible {
-    outline: 2px solid var(--interactive-accent);
-    outline-offset: -2px;
 }
 
 /* ── Link tooltip ────────────────────────────────────────── */
@@ -401,45 +442,6 @@
 .drawing-view-import-btn:focus-visible {
     outline: 2px solid var(--interactive-accent);
     outline-offset: 1px;
-}
-
-/* ── "Apply view" button ─────────────────────────────────── */
-/* Lives inside .drawing-view-hud, left of the status text.
-   Prefix .drawing-view-hud gives enough specificity to beat Obsidian's
-   button base styles (e.g. button:not(.clickable-icon) { background: … }). */
-.drawing-view-hud .drawing-view-open-btn,
-.drawing-view-hud .drawing-view-fit-btn,
-.drawing-view-hud .drawing-view-magnifier-btn,
-.drawing-view-hud .drawing-view-update-btn {
-    pointer-events: auto;
-    background: transparent;
-    border-right: 1px solid var(--background-modifier-border);
-    padding: 2px 7px;
-    cursor: pointer;
-    color: var(--text-muted);
-    font-size: var(--font-text-size);
-    line-height: 1.4;
-    user-select: none;
-}
-
-.drawing-view-hud .drawing-view-open-btn:hover,
-.drawing-view-hud .drawing-view-fit-btn:hover,
-.drawing-view-hud .drawing-view-magnifier-btn:hover,
-.drawing-view-hud .drawing-view-update-btn:hover {
-    color: var(--interactive-accent);
-    background: transparent;
-}
-
-.drawing-view-hud .drawing-view-open-btn:focus-visible,
-.drawing-view-hud .drawing-view-fit-btn:focus-visible,
-.drawing-view-hud .drawing-view-magnifier-btn:focus-visible,
-.drawing-view-hud .drawing-view-update-btn:focus-visible {
-    outline: 2px solid var(--interactive-accent);
-    outline-offset: -2px;
-}
-
-.drawing-view-hud .drawing-view-magnifier-btn.is-active {
-    color: var(--interactive-accent);
 }
 
 /* ── Settings: Shape Libraries section ───────────────────── */

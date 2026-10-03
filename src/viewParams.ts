@@ -141,3 +141,14 @@ export function migrateLegacyParams(paramStr: string): string | null {
 
 	return sawFile ? parts.join('|') : null;
 }
+
+/**
+ * Param line for pointing a code block at a different file. Keeps only the
+ * container `height` — page, zoom and offset are specific to the old file's
+ * content and would be meaningless (or out of range) for the new one.
+ */
+export function buildSwitchFileParams(path: string, height: number): string {
+	const parts = [`file=${path}`];
+	if (height > 0) parts.push(`height=${height}`);
+	return parts.join('|');
+}

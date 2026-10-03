@@ -16,7 +16,7 @@ export interface ShapeHit {
  * Format-agnostic contract drawingViewer.ts depends on instead of a
  * concrete renderer class — the seam for adding renderers for other vector
  * "infinite canvas" formats (e.g. CAD) later without touching the viewer's
- * HUD / pan-zoom / magnifier chrome, which only ever talks to a drawing
+ * HUD / pan-zoom / magnifier frame, which only ever talks to a drawing
  * through this interface. `GraphRenderer` (drawio/@maxgraph) and
  * `VisioRenderer` are the implementations today.
  *

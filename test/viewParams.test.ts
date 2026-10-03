@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { migrateLegacyParams, parseViewParams } from '../src/viewParams';
+import { buildSwitchFileParams, migrateLegacyParams, parseViewParams } from '../src/viewParams';
 
 describe('migrateLegacyParams', () => {
 	it('returns null for the current key=value format', () => {
@@ -34,5 +34,15 @@ describe('migrateLegacyParams', () => {
 		expect(opts.offsetX).toBe(418);
 		expect(opts.offsetY).toBe(15);
 		expect(opts.offsetSpecified).toBe(true);
+	});
+});
+
+describe('buildSwitchFileParams', () => {
+	it('keeps only the file and the container height', () => {
+		expect(buildSwitchFileParams('a/b.drawio', 520)).toBe('file=a/b.drawio|height=520');
+	});
+
+	it('omits height when the block never set one', () => {
+		expect(buildSwitchFileParams('a/b.vsdx', 0)).toBe('file=a/b.vsdx');
 	});
 });

@@ -93,7 +93,11 @@ class RichCodeBlock extends MarkdownRenderChild {
 			await writeBlockParams(this.app_, this.sourcePath, this.sectionInfo, this.originalSource, newParams);
 		};
 
-		const viewer = new DrawingViewer(this.app_, this.containerEl, this.options, this.settings, this.sourcePath, this.stencilsDir, onUpdate);
+		const viewer = new DrawingViewer(
+			{ app: this.app_, container: this.containerEl, options: this.options, sourcePath: this.sourcePath, writeParams: onUpdate },
+			this.settings,
+			this.stencilsDir,
+		);
 		this.addChild(viewer);
 		viewer.load();
 	}
