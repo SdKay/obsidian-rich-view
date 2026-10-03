@@ -9,8 +9,8 @@ export const en = {
 	fullscreen: 'Fullscreen (Esc to exit)',
 	switchFile: 'Switch to another file',
 	importFile: 'Import file',
-	importFilePickerPlaceholder: 'Search .drawio / .vsdx files…',
-	noDiagramFilesInVault: 'No .drawio or .vsdx files found in this vault.',
+	importFilePickerPlaceholder: 'Search .drawio / .vsdx / .pptx files…',
+	noDiagramFilesInVault: 'No .drawio, .vsdx or .pptx files found in this vault.',
 } as const;
 
 export type StringKey = keyof typeof en;

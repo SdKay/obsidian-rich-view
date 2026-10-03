@@ -85,6 +85,14 @@ export abstract class RichViewer extends Component {
 		this.container.createDiv({ cls: 'drawing-view-error', text: message });
 	}
 
+	/** Open the file in the system's default app (e.g. draw.io desktop, PowerPoint). */
+	protected openExternal(): void {
+		// openWithDefaultApp is a runtime-only method not exposed in Obsidian's types.
+		(this.app as unknown as { openWithDefaultApp(p: string): Promise<void> })
+			.openWithDefaultApp(this.options.filename)
+			.catch((err: unknown) => console.error('RichViewer open:', err));
+	}
+
 	protected resolveFile(filename: string): TFile | null {
 		// main.ts already resolved this to a vault-absolute path; a direct lookup
 		// avoids iterating all files (which is slow on large vaults).

@@ -1,6 +1,7 @@
 import { MarkdownRenderChild, MarkdownSectionInformation, Plugin, TFile, normalizePath, setTooltip } from 'obsidian';
 import { migrateLegacyParams, parseViewParams, type ViewOptions } from './viewParams';
 import { DrawingViewer } from './drawingViewer';
+import { SlideViewer } from './slideViewer';
 import { DEFAULT_SETTINGS, RichViewSettingTab, type RichViewSettings } from './settings';
 import { openDiagramFilePicker } from './diagramFilePicker';
 import { t } from './i18n';
@@ -93,11 +94,10 @@ class RichCodeBlock extends MarkdownRenderChild {
 			await writeBlockParams(this.app_, this.sourcePath, this.sectionInfo, this.originalSource, newParams);
 		};
 
-		const viewer = new DrawingViewer(
-			{ app: this.app_, container: this.containerEl, options: this.options, sourcePath: this.sourcePath, writeParams: onUpdate },
-			this.settings,
-			this.stencilsDir,
-		);
+		const ctx = { app: this.app_, container: this.containerEl, options: this.options, sourcePath: this.sourcePath, writeParams: onUpdate };
+		const viewer = this.options.filename.toLowerCase().endsWith('.pptx')
+			? new SlideViewer(ctx)
+			: new DrawingViewer(ctx, this.settings, this.stencilsDir);
 		this.addChild(viewer);
 		viewer.load();
 	}

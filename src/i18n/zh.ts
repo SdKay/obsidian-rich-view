@@ -10,6 +10,6 @@ export const zh: Dictionary = {
 	fullscreen: '全屏（Esc 退出）',
 	switchFile: '切换到其他文件',
 	importFile: '导入文件',
-	importFilePickerPlaceholder: '搜索 .drawio / .vsdx 文件…',
-	noDiagramFilesInVault: '当前仓库中没有 .drawio 或 .vsdx 文件。',
+	importFilePickerPlaceholder: '搜索 .drawio / .vsdx / .pptx 文件…',
+	noDiagramFilesInVault: '当前仓库中没有 .drawio、.vsdx 或 .pptx 文件。',
 };

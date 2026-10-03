@@ -119,7 +119,7 @@ export function migrateLegacyParams(paramStr: string): string | null {
 	let sawFile = false;
 
 	for (const raw of tokens) {
-		if (/\.(drawio|xml|vsdx)$/i.test(raw)) {
+		if (/\.(drawio|xml|vsdx|pptx)$/i.test(raw)) {
 			parts.push(`file=${raw}`);
 			sawFile = true;
 		} else if (/^page[-\s]?(\d+)$/i.test(raw)) {

@@ -1,10 +1,10 @@
 import { App, FuzzySuggestModal, Notice, TFile } from 'obsidian';
 import { t } from './i18n';
 
-const DIAGRAM_EXTENSIONS = ['drawio', 'vsdx'];
+const DIAGRAM_EXTENSIONS = ['drawio', 'vsdx', 'pptx'];
 
 /**
- * Fuzzy file picker scoped to `.drawio`/`.vsdx` files already in the vault —
+ * Fuzzy file picker scoped to `.drawio`/`.vsdx`/`.pptx` files already in the vault —
  * modeled on obsidian-rich-table's xlsxFilePicker.ts. Vault files only, not
  * an OS-native "any file on disk" dialog: the chosen file's path is written
  * straight into the code block's `file=` param, so it must already be

@@ -411,6 +411,20 @@
     font-size: var(--font-ui-small);
 }
 
+/* ── Slide viewer (paginated documents) ─────────────────── */
+.slide-view-stage {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    background: var(--background-secondary);
+    padding: 8px;
+    box-sizing: border-box;
+}
+
+.slide-view-stage > div {
+    flex: none;
+}
+
 /* ── Import-file prompt (blank rich-view block) ─────────── */
 .drawing-view-import-prompt {
     display: flex;

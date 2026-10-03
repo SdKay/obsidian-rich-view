@@ -351,13 +351,6 @@ export class DrawingViewer extends RichViewer {
 		this.addChild(this.linkHover);
 	}
 
-	private openExternal(): void {
-		// openWithDefaultApp is a runtime-only method not exposed in Obsidian's types.
-		(this.app as unknown as { openWithDefaultApp(p: string): Promise<void> })
-			.openWithDefaultApp(this.options.filename)
-			.catch((err: unknown) => console.error('DrawingViewer open:', err));
-	}
-
 	private async updateCellLink(cellId: string, link: string): Promise<void> {
 		const file = this.resolveFile(this.options.filename);
 		if (!file) return;

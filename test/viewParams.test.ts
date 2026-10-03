@@ -23,6 +23,10 @@ describe('migrateLegacyParams', () => {
 		expect(migrateLegacyParams('chart.vsdx|page-2')).toBe('file=chart.vsdx|page-index=2');
 	});
 
+	it('recognizes a .pptx file token', () => {
+		expect(migrateLegacyParams('deck.pptx|440px')).toBe('file=deck.pptx|height=440');
+	});
+
 	it('the migrated string parses correctly via parseViewParams', () => {
 		const migrated = migrateLegacyParams('diagram.drawio|440px|Overview|54%|(418, 15)');
 		expect(migrated).not.toBeNull();
