@@ -5,7 +5,7 @@ import { GraphRenderer } from './graphRenderer';
 import { VisioRenderer } from './visioRenderer';
 import type { DrawingRenderer, BoundingBox } from './drawingRenderer';
 import type { RichViewSettings } from './settings';
-import { patchCellLink } from './linkEditor';
+import { patchCellLink } from './cellLink';
 import { LinkHover } from './linkHover';
 import { PanZoomController, type ViewportHost } from './viewportController';
 import { ViewerFrame } from './frame/viewerFrame';

@@ -31,15 +31,4 @@ export default defineConfig(
 		},
 	},
 	...obsidianmd.configs.recommended,
-	{
-		// linkEditor.ts's `doc` is an XML Document from `DOMParser`, not the
-		// live app DOM — it has no `.win`, so the rule's `createEl`
-		// suggestion doesn't apply. Scoped off here (not an inline disable
-		// comment) because obsidianmd/* disables are blocked by
-		// eslint-comments/no-restricted-disable.
-		files: ['src/linkEditor.ts'],
-		rules: {
-			'obsidianmd/prefer-create-el': 'off',
-		},
-	},
 );
