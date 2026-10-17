@@ -13,5 +13,8 @@ export default defineConfig({
 		// need a real DOM, so jsdom is the default environment here rather
 		// than vitest's plain 'node'.
 		environment: 'jsdom',
+		// Each worker loads jsdom and the parsers; with every core in use the pool times out starting workers
+		// when memory is tight. Four keeps the full suite reliable.
+		maxWorkers: 4,
 	},
 });

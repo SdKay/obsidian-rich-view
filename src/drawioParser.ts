@@ -1,4 +1,5 @@
 import { inflateRaw } from 'pako';
+import { boundedInflateRaw } from './boundedInflate';
 
 // ---------------------------------------------------------------------------
 // .drawio page model
@@ -62,6 +63,42 @@ export function parseDrawioFile(content: string): DrawioFile {
 			const inner = diagram.textContent?.trim() ?? '';
 			const xml = decodeCompressed(inner);
 			return { name, id, xml };
+		}),
+	};
+}
+
+/**
+ * Strict variant of `parseDrawioFile` for callers that must not guess: a
+ * compressed `<diagram>` that cannot be decoded, or that inflates past
+ * `maxDecodedBytes`, makes the whole call throw — whereas `parseDrawioFile`
+ * falls back to treating the raw base64 as XML (kept for rendering, where a
+ * broken page should still show something). Stateless: no module-level cache.
+ */
+export function parseDrawioFileStrict(content: string, maxDecodedBytes: number): DrawioFile {
+	const doc = new DOMParser().parseFromString(content, 'application/xml');
+	const parserError = doc.querySelector('parsererror');
+	if (parserError) throw new Error(extractParserErrorMessage(parserError) || 'Not valid XML');
+
+	const diagrams = Array.from(doc.querySelectorAll('mxfile > diagram'));
+	if (diagrams.length === 0) {
+		if (doc.documentElement.nodeName === 'mxGraphModel') return { pages: [{ name: 'Page', id: '', xml: content }] };
+		return { pages: [] };
+	}
+
+	let remaining = maxDecodedBytes;
+	return {
+		pages: diagrams.map(diagram => {
+			const name = diagram.getAttribute('name') ?? 'Page';
+			const id = diagram.getAttribute('id') ?? '';
+			const inlineModel = diagram.querySelector('mxGraphModel');
+			if (inlineModel) return { name, id, xml: serializeXml(inlineModel) };
+
+			const inner = diagram.textContent?.trim() ?? '';
+			if (!inner) return { name, id, xml: '<mxGraphModel/>' };
+			const bytes = Uint8Array.from(atob(inner), c => c.charCodeAt(0));
+			const decoded = boundedInflateRaw(bytes, remaining);
+			remaining -= decoded.length; // the limit is per file, not per page
+			return { name, id, xml: decodeURIComponent(new TextDecoder().decode(decoded)) };
 		}),
 	};
 }
