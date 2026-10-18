@@ -13,12 +13,15 @@ export interface RichViewSettings {
 	panModifier: PanModifier;
 	/** Vault-relative path to a folder containing custom stencil .xml files. */
 	customStencilDir: string;
+	/** Open these file types in Rich View's own tab view. Off leaves the extension to another plugin. */
+	openInRichView: Record<'drawio' | 'vsdx' | 'pptx', boolean>;
 }
 
 export const DEFAULT_SETTINGS: RichViewSettings = {
 	zoomModifier: 'none',
 	panModifier: 'none',
 	customStencilDir: '',
+	openInRichView: { drawio: true, vsdx: true, pptx: true },
 };
 
 const ZOOM_MODIFIER_OPTIONS: Record<ZoomModifier, string> = {
@@ -30,6 +33,19 @@ const PAN_MODIFIER_OPTIONS: Record<PanModifier, string> = {
 	none: 'Drag to pan · Ctrl+click to follow links',
 	ctrl: 'Click to follow links · Ctrl+drag to pan',
 };
+
+type FileFormat = keyof RichViewSettings['openInRichView'];
+
+const FILE_FORMATS: { ext: FileFormat; label: string; desc: string }[] = [
+	{ ext: 'drawio', label: 'draw.io files (.drawio)', desc: 'Open .drawio files in a Rich View tab. Turn off if another plugin should open them.' },
+	{ ext: 'vsdx', label: 'Visio files (.vsdx)', desc: 'Open .vsdx files in a Rich View tab.' },
+	{ ext: 'pptx', label: 'PowerPoint files (.pptx)', desc: 'Open .pptx files in a Rich View tab.' },
+];
+
+function formatOfKey(key: string): FileFormat | null {
+	const ext = key.startsWith('openInRichView.') ? key.slice('openInRichView.'.length) : '';
+	return FILE_FORMATS.find(f => f.ext === ext)?.ext ?? null;
+}
 
 export class RichViewSettingTab extends PluginSettingTab {
 	private readonly plugin: RichViewPlugin;
@@ -73,6 +89,22 @@ export class RichViewSettingTab extends PluginSettingTab {
 			},
 			{
 				type: 'group',
+				heading: 'File tabs',
+				items: [
+					...FILE_FORMATS.map(format => ({
+						name: format.label,
+						desc: format.desc,
+						control: { type: 'toggle' as const, key: `openInRichView.${format.ext}`, defaultValue: true },
+					})),
+					{
+						name: 'Status',
+						desc: 'Changes apply after you turn the plugin off and on again.',
+						render: (setting: Setting) => { this.renderRegistrationNotice(setting.descEl); },
+					},
+				],
+			},
+			{
+				type: 'group',
 				heading: 'Shape libraries',
 				items: [
 					{
@@ -106,11 +138,15 @@ export class RichViewSettingTab extends PluginSettingTab {
 	}
 
 	getControlValue(key: string): unknown {
+		const format = formatOfKey(key);
+		if (format) return this.plugin.settings.openInRichView[format];
 		return (this.plugin.settings as unknown as Record<string, unknown>)[key];
 	}
 
 	async setControlValue(key: string, value: unknown): Promise<void> {
-		(this.plugin.settings as unknown as Record<string, unknown>)[key] = value;
+		const format = formatOfKey(key);
+		if (format) this.plugin.settings.openInRichView[format] = value === true;
+		else (this.plugin.settings as unknown as Record<string, unknown>)[key] = value;
 		await this.plugin.saveSettings();
 	}
 
@@ -147,6 +183,21 @@ export class RichViewSettingTab extends PluginSettingTab {
 				});
 			});
 
+		new Setting(containerEl).setName('File tabs').setHeading();
+		for (const format of FILE_FORMATS) {
+			new Setting(containerEl)
+				.setName(format.label)
+				.setDesc(format.desc)
+				.addToggle(toggle => toggle
+					.setValue(this.plugin.settings.openInRichView[format.ext])
+					.onChange(async value => {
+						this.plugin.settings.openInRichView[format.ext] = value;
+						await this.plugin.saveSettings();
+					}));
+		}
+		const status = new Setting(containerEl).setName('Status').setDesc('Changes apply after you turn the plugin off and on again.');
+		this.renderRegistrationNotice(status.descEl);
+
 		new Setting(containerEl).setName('Shape libraries').setHeading();
 
 		new Setting(containerEl)
@@ -166,6 +217,15 @@ export class RichViewSettingTab extends PluginSettingTab {
 			);
 
 		this.renderShapeLibrariesInto(containerEl);
+	}
+
+	/** One line per extension Obsidian refused, so a draw.io plugin already owning `.drawio` is explained rather than silent. */
+	private renderRegistrationNotice(el: HTMLElement): void {
+		const refusals = this.plugin.viewRegistry.refusals();
+		if (refusals.length === 0) return;
+		for (const { ext, reason } of refusals) {
+			el.createDiv({ cls: 'rich-view-setting-warning', text: `.${ext} was not taken: Obsidian refused it (${reason}). Another plugin probably opens these files; turn this format off here to stop trying.` });
+		}
 	}
 
 	/** Builds the header buttons + per-library checkbox list + "Delete all" row into `root`. Shared by the declarative render() entry and the display() fallback. */

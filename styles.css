@@ -543,3 +543,20 @@
 .drawing-view-visio-text {
     pointer-events: none;
 }
+
+/* ── File view (a file opened in its own tab) ───────────── */
+.rich-view-file.view-content {
+    padding: 0;
+    overflow: hidden;
+}
+
+.rich-view-file .rich-view-frame {
+    height: 100%;
+    border: none;
+    border-radius: 0;
+}
+
+.rich-view-setting-warning {
+    margin-top: var(--size-4-1);
+    color: var(--text-warning);
+}

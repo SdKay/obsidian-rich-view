@@ -3,6 +3,10 @@ import { migrateLegacyParams, parseViewParams, type ViewOptions } from './viewPa
 import { DrawingViewer } from './drawingViewer';
 import { SlideViewer } from './slideViewer';
 import { DEFAULT_SETTINGS, RichViewSettingTab, type RichViewSettings } from './settings';
+import { RICH_FILE_VIEW_TYPE, RichFileView } from './richFileView';
+import { ViewRegistry } from './viewRegistration';
+import { createProvider, SEARCH_EXTENSIONS } from './search/provider';
+import type { RichSearchProvider } from './richSearchApi';
 import { openDiagramFilePicker } from './diagramFilePicker';
 import { t } from './i18n';
 
@@ -104,13 +108,18 @@ class RichCodeBlock extends MarkdownRenderChild {
 }
 
 export default class RichViewPlugin extends Plugin {
-	settings: RichViewSettings = { ...DEFAULT_SETTINGS };
+	settings: RichViewSettings = structuredClone(DEFAULT_SETTINGS);
+	/** Which file types Obsidian really handed to our tab view; `viewRegistered` and the settings notice read it. */
+	readonly viewRegistry = new ViewRegistry();
+	/** Found by rich-search at `app.plugins.plugins['rich-view'].richSearch`. */
+	richSearch: RichSearchProvider = createProvider(ext => this.viewRegistry.isRegistered(ext));
 
 	async onload(): Promise<void> {
 		await this.loadSettings();
 		this.addSettingTab(new RichViewSettingTab(this.app, this));
 
 		const stencilsDir = normalizePath(`${this.app.vault.configDir}/plugins/${this.manifest.id}/stencils`);
+		this.registerFileView(stencilsDir);
 
 		this.registerMarkdownCodeBlockProcessor('rich-view', (source, el, ctx) => {
 			const trimmed = source.trim();
@@ -148,8 +157,27 @@ export default class RichViewPlugin extends Plugin {
 		});
 	}
 
+	/** The tab view is registered once; each extension separately, because Obsidian may refuse one that another plugin owns. */
+	private registerFileView(stencilsDir: string): void {
+		try {
+			this.registerView(RICH_FILE_VIEW_TYPE, leaf => new RichFileView(leaf, this.settings, stencilsDir));
+		} catch (err) {
+			console.error('Rich View: could not register the file view', err);
+			return;
+		}
+		this.viewRegistry.register(
+			SEARCH_EXTENSIONS,
+			ext => this.settings.openInRichView[ext as keyof RichViewSettings['openInRichView']] !== false,
+			ext => { this.registerExtensions([ext], RICH_FILE_VIEW_TYPE); },
+		);
+	}
+
 	async loadSettings(): Promise<void> {
-		Object.assign(this.settings, DEFAULT_SETTINGS, (await this.loadData()) as Partial<RichViewSettings>);
+		const saved = ((await this.loadData()) ?? {}) as Partial<RichViewSettings>;
+		// Merge the nested switches one by one: a shallow merge would let a saved partial object wipe the other defaults.
+		Object.assign(this.settings, DEFAULT_SETTINGS, saved, {
+			openInRichView: { ...DEFAULT_SETTINGS.openInRichView, ...saved.openInRichView },
+		});
 	}
 
 	async saveSettings(): Promise<void> {
