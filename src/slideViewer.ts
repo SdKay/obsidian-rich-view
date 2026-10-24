@@ -6,7 +6,8 @@ import { RichViewer, type ViewerContext } from './richViewer';
 import { clampZoomPercent, fitZoomPercent, wheelZoomPercent } from './slideFit';
 import { switchFile } from './switchFile';
 import { chooseMarks } from './matchTargets';
-import { findSearchHost, readLiveSearch, subscribeToSearch } from './searchHost';
+import { findSearchHost, readLiveSearch, SearchSubscription } from './searchHost';
+import type { MatchOptions } from './richSearchApi';
 import type { SearchRequest } from './searchRequest';
 import { markStyle, openedPosition, slideUnits, toSearchResult, uniqueByShape } from './slideMarks';
 import { addKeywordMarks } from './slideKeywordMarks';
@@ -29,9 +30,11 @@ export class SlideViewer extends RichViewer {
 	private marks: SearchHighlightHandle[] = [];
 	/** Keyword-level marks added straight into text boxes; removed with the rest on every redraw. */
 	private keywordMarks: HTMLElement[] = [];
-	private stopSearch: (() => void) | null = null;
+	private readonly search = new SearchSubscription(() => findSearchHost(this.app), () => { void this.refreshMarks(); });
 	/** Bumped on every redraw of the marks, so a slow earlier pass cannot draw over a newer one. */
 	private markGeneration = 0;
+	/** The query that came with the click, used only when the host cannot tell the live one (contract 5.8). */
+	private clickedQuery: MatchOptions | undefined;
 
 	constructor(ctx: ViewerContext) {
 		super(ctx);
@@ -43,8 +46,7 @@ export class SlideViewer extends RichViewer {
 	}
 
 	protected teardown(): void {
-		this.stopSearch?.();
-		this.stopSearch = null;
+		this.search.stop();
 		this.markGeneration++;
 		this.marks = [];
 		this.keywordMarks = [];
@@ -87,8 +89,7 @@ export class SlideViewer extends RichViewer {
 			await viewer.goToSlide(this.current);
 			await (this.pinnedZoom > 0 ? viewer.setZoom(this.pinnedZoom) : this.refit());
 			this.publish();
-			this.stopSearch?.();
-			this.stopSearch = subscribeToSearch(findSearchHost(this.app), () => { void this.refreshMarks(); });
+			this.search.renew();
 			await this.refreshMarks();
 			this.markReady();
 		} catch (err) {
@@ -127,6 +128,9 @@ export class SlideViewer extends RichViewer {
 
 	/** Go to the slide a hit names; the marks follow the slide on screen. A foreign or stale anchor changes nothing. */
 	override showSearchRequest(request: SearchRequest): void {
+		this.clickedQuery = request.query;
+		// The user is using rich-search right now, so it exists even if it was enabled after this view opened.
+		this.search.renew();
 		const slide = slideOfAnchor(request.anchor);
 		const viewer = this.viewer;
 		if (slide === null || !viewer || slide < 1 || slide > viewer.slideCount) {
@@ -151,7 +155,7 @@ export class SlideViewer extends RichViewer {
 		this.keywordMarks = [];
 
 		const host = findSearchHost(this.app);
-		const { query, hit } = readLiveSearch(host);
+		const { query, hit } = readLiveSearch(host, this.clickedQuery);
 		const units = slideUnits(this.textIndex, this.current);
 		const chosen = chooseMarks(host, units, query, hit, this.options.filename);
 		const byUnit = new Map(units.map(u => [u, u.entry]));

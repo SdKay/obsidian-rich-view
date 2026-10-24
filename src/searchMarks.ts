@@ -1,7 +1,8 @@
 import { Component, type App } from 'obsidian';
+import type { MatchOptions } from './richSearchApi';
 import type { DrawingRenderer } from './drawingRenderer';
 import { chooseMarks, marksPerShape, type MarkableUnit } from './matchTargets';
-import { findSearchHost, readLiveSearch, subscribeToSearch } from './searchHost';
+import { findSearchHost, readLiveSearch, SearchSubscription } from './searchHost';
 import { shapeIdOfAnchor } from './pageUnits';
 
 /** What the marks need from the viewer that owns them. */
@@ -21,7 +22,9 @@ export interface SearchMarksHost {
  */
 export class SearchMarks extends Component {
 	private layer: HTMLElement | null = null;
-	private stop: (() => void) | null = null;
+	private readonly subscription = new SearchSubscription(() => findSearchHost(this.app), () => { this.refresh(); });
+	/** The query that came with the click, used only when the host cannot tell the live one (contract 5.8). */
+	private clickedQuery: MatchOptions | undefined;
 
 	constructor(
 		private readonly app: App,
@@ -34,14 +37,17 @@ export class SearchMarks extends Component {
 
 	onload(): void {
 		this.layer = this.panEl.createDiv('drawing-view-search-layer');
-		this.subscribe();
+		this.subscription.renew();
 	}
 
 	onunload(): void {
-		this.stop?.();
-		this.stop = null;
+		this.subscription.stop();
 		this.layer?.remove();
 		this.layer = null;
+	}
+
+	setClickedQuery(query: MatchOptions | undefined): void {
+		this.clickedQuery = query;
 	}
 
 	/** Redraw from the current search state; call after the page or the zoom/pan changes. */
@@ -53,7 +59,7 @@ export class SearchMarks extends Component {
 		if (!renderer) return;
 
 		const searchHost = findSearchHost(this.app);
-		const { query, hit } = readLiveSearch(searchHost);
+		const { query, hit } = readLiveSearch(searchHost, this.clickedQuery);
 		const marks = chooseMarks(searchHost, this.host.units(), query, hit, this.host.filePath());
 		for (const mark of marksPerShape(marks, shapeIdOfAnchor)) {
 			const bounds = renderer.getShapeBounds(mark.shapeId);
@@ -74,7 +80,7 @@ export class SearchMarks extends Component {
 		const renderer = this.host.renderer();
 		if (!renderer) return null;
 		const searchHost = findSearchHost(this.app);
-		const { query, hit } = readLiveSearch(searchHost);
+		const { query, hit } = readLiveSearch(searchHost, this.clickedQuery);
 		const opened = chooseMarks(searchHost, this.host.units(), query, hit, this.host.filePath()).find(m => m.opened);
 		const id = opened ? shapeIdOfAnchor(opened.unit.anchor) : null;
 		return id === null ? null : renderer.getShapeBounds(id);
@@ -83,18 +89,13 @@ export class SearchMarks extends Component {
 	/** Id of the shape that holds the opened hit on the shown page, if any. */
 	openedShapeId(): string | null {
 		const searchHost = findSearchHost(this.app);
-		const { query, hit } = readLiveSearch(searchHost);
+		const { query, hit } = readLiveSearch(searchHost, this.clickedQuery);
 		const opened = chooseMarks(searchHost, this.host.units(), query, hit, this.host.filePath()).find(m => m.opened);
 		return opened ? shapeIdOfAnchor(opened.unit.anchor) : null;
 	}
 
 	/** Re-subscribe, because rich-search may have been enabled or replaced since the view opened. */
 	resubscribe(): void {
-		this.stop?.();
-		this.subscribe();
-	}
-
-	private subscribe(): void {
-		this.stop = subscribeToSearch(findSearchHost(this.app), () => { this.refresh(); });
+		this.subscription.renew();
 	}
 }

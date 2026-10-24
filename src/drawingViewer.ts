@@ -384,6 +384,7 @@ export class DrawingViewer extends RichViewer {
 	override showSearchRequest(request: SearchRequest): void {
 		const pageName = pageOfAnchor(request.anchor);
 		const index = pageName === null ? -1 : this.pages.findIndex(p => p.name === pageName);
+		this.searchMarks?.setClickedQuery(request.query);
 		this.pendingReveal = true;
 		if (index !== -1 && index !== this.currentPage) this.switchPage(index);
 		else this.afterPageDrawn();

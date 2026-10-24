@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { MatchOptions, OpenedHit, RichSearchHostApi, Span } from '../src/richSearchApi';
-import { findSearchHost, matchText, readLiveSearch, subscribeToSearch } from '../src/searchHost';
+import { findSearchHost, matchText, readLiveSearch, SearchSubscription, subscribeToSearch } from '../src/searchHost';
 import { chooseMarks, marksPerShape, sameAnchor, type MarkableUnit, type MarkTarget } from '../src/matchTargets';
 import { shapeIdOfAnchor } from '../src/pageUnits';
 
@@ -74,6 +74,33 @@ describe('readLiveSearch', () => {
 		expect(readLiveSearch(findSearchHost(fakeApp('old').app))).toEqual({ query: null, hit: null });
 		expect(readLiveSearch(null)).toEqual({ query: null, hit: null });
 		expect(readLiveSearch(findSearchHost(fakeApp('throws').app))).toEqual({ query: null, hit: null });
+	});
+});
+
+describe('readLiveSearch: the query that came with the click (contract 5.8)', () => {
+	const clicked: MatchOptions = { query: 'clicked' };
+
+	it('is used when the host has no currentQuery, so the hit is still marked once', () => {
+		expect(readLiveSearch(findSearchHost(fakeApp('old').app), clicked).query).toEqual(clicked);
+	});
+	it('loses to currentQuery when the host has it: the search on screen wins', () => {
+		const live: MatchOptions = { query: 'typed since' };
+		expect(readLiveSearch(findSearchHost(fakeApp('full', { query: live, hit: null }).app), clicked).query).toEqual(live);
+	});
+	it('does not bring marks back after the panel closed or the query was emptied (currentQuery says null)', () => {
+		expect(readLiveSearch(findSearchHost(fakeApp('full', { query: null, hit: null }).app), clicked).query).toBeNull();
+	});
+	it('is not used when currentQuery throws: a broken host marks nothing', () => {
+		expect(readLiveSearch(findSearchHost(fakeApp('throws').app), clicked).query).toBeNull();
+	});
+	it('is not used without a host at all, since nothing can find the matches', () => {
+		expect(readLiveSearch(null, clicked).query).toBeNull();
+	});
+	it('leaves the opened hit alone: an old host still draws every match dimmed', () => {
+		expect(readLiveSearch(findSearchHost(fakeApp('old').app), clicked).hit).toBeNull();
+	});
+	it('does nothing when no query came with the click', () => {
+		expect(readLiveSearch(findSearchHost(fakeApp('old').app), undefined).query).toBeNull();
 	});
 });
 
@@ -199,5 +226,56 @@ describe('marksPerShape', () => {
 	});
 	it('is empty for no marks', () => {
 		expect(marksPerShape([], shapeIdOfAnchor)).toEqual([]);
+	});
+});
+
+describe('SearchSubscription', () => {
+	it('starts listening to the host that is there when it is renewed', () => {
+		const fake = fakeApp('full');
+		let calls = 0;
+		const sub = new SearchSubscription(() => findSearchHost(fake.app), () => { calls++; });
+		sub.renew();
+		fake.fire();
+		expect(calls).toBe(2);
+	});
+	it('picks up a host that was not there when the view opened', () => {
+		const registry: { plugins: Record<string, unknown> } = { plugins: {} };
+		const app = { plugins: registry } as never;
+		let calls = 0;
+		const sub = new SearchSubscription(() => findSearchHost(app), () => { calls++; });
+		sub.renew();                                   // rich-search is not installed yet: nothing to listen to
+		const later = fakeApp('full');
+		registry.plugins = (later.app as { plugins: { plugins: Record<string, unknown> } }).plugins.plugins;
+		sub.renew();                                   // renewed once it is: now it listens
+		later.fire();
+		expect(calls).toBe(2);
+	});
+	it('renewing replaces the earlier subscription instead of adding a second one', () => {
+		const fake = fakeApp('full');
+		let calls = 0;
+		const sub = new SearchSubscription(() => findSearchHost(fake.app), () => { calls++; });
+		sub.renew();
+		sub.renew();
+		sub.renew();
+		expect(fake.counts()).toBe(2);                 // one query listener + one hit listener
+		fake.fire();
+		expect(calls).toBe(2);
+	});
+	it('stop ends the subscription, and renew after stop starts it again', () => {
+		const fake = fakeApp('full');
+		let calls = 0;
+		const sub = new SearchSubscription(() => findSearchHost(fake.app), () => { calls++; });
+		sub.renew();
+		sub.stop();
+		expect(fake.counts()).toBe(0);
+		fake.fire();
+		expect(calls).toBe(0);
+		sub.renew();
+		fake.fire();
+		expect(calls).toBe(2);
+	});
+	it('stop on one that never started is harmless, and so is stopping twice', () => {
+		const sub = new SearchSubscription(() => null, () => {});
+		expect(() => { sub.stop(); sub.stop(); }).not.toThrow();
 	});
 });

@@ -34,9 +34,16 @@ export interface LiveSearch {
 	hit: OpenedHit | null;
 }
 
-export function readLiveSearch(host: RichSearchHostApi | null): LiveSearch {
+/**
+ * `clicked` is the query that came with the click (`eState`). It is only a fallback for a host that has no
+ * `currentQuery` at all (contract 5.8); a host that has it always wins, including when it says "no search".
+ */
+export function readLiveSearch(host: RichSearchHostApi | null, clicked?: MatchOptions): LiveSearch {
+	const hasLiveQuery = typeof host?.currentQuery === 'function';
 	return {
-		query: safeCall(() => host?.currentQuery?.() ?? null),
+		query: hasLiveQuery
+			? safeCall(() => host?.currentQuery?.() ?? null)
+			: host && clicked ? clicked : null,
 		hit: safeCall(() => host?.currentHit?.() ?? null),
 	};
 }
@@ -70,4 +77,27 @@ export function subscribeToSearch(host: RichSearchHostApi | null, listener: () =
 			try { stop(); } catch { /* already gone */ }
 		}
 	};
+}
+
+/**
+ * One live subscription to the search on screen. `renew` looks the host up again each time, because
+ * rich-search can be enabled or replaced after a view opened; the earlier subscription is always ended first.
+ */
+export class SearchSubscription {
+	private stopCurrent: (() => void) | null = null;
+
+	constructor(
+		private readonly findHost: () => RichSearchHostApi | null,
+		private readonly onChange: () => void,
+	) {}
+
+	renew(): void {
+		this.stop();
+		this.stopCurrent = subscribeToSearch(this.findHost(), this.onChange);
+	}
+
+	stop(): void {
+		this.stopCurrent?.();
+		this.stopCurrent = null;
+	}
 }
