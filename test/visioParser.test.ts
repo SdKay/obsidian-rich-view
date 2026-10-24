@@ -342,11 +342,12 @@ describe('parseVisioFile — end-to-end OPC resolution + master fallback', () =>
 		expect(result.pages[0]!.shapes[0]!.linePattern).toBe(2);
 	});
 
-	it('scales TxtWidth (the renderer\'s wrap width) from local inches to px by the same length scale as ArcTo radii', () => {
+	it('scales the wrap width (TxtWidth minus the default 4 pt margin each side) from local inches to px by the same length scale as ArcTo radii', () => {
 		// This fixture's shape has no rotation/flip beyond the page's own
-		// Y-flip, so length scale === PX_PER_INCH (96) exactly.
+		// Y-flip, so length scale === PX_PER_INCH (96) exactly. It has no
+		// margin cells, so Visio's default margin of 4 pt applies on both sides.
 		const result = parseVisioFile(buildFixtureVsdx());
-		expect(result.pages[0]!.shapes[0]!.textWidth).toBeCloseTo(3 * 96, 5);
+		expect(result.pages[0]!.shapes[0]!.textWidth).toBeCloseTo((3 - 2 * 4 / 72) * 96, 5);
 	});
 
 	it('reports an error instead of throwing on a corrupt buffer', () => {

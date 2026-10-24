@@ -1,3 +1,5 @@
+import { roundPolyline } from './visioRounding';
+import { placeText, readTextLayout, type HAlign, type VAlign } from './visioTextBox';
 import { unzipSync } from 'fflate';
 
 /**
@@ -74,11 +76,21 @@ export interface VisioShape {
 	linePattern: number;
 	strokeWidth: number; // px
 	text: string; // may contain '\n' for multiple lines
-	textX: number; // px, page space
-	textY: number; // px, page space
+	/** Where the text starts, in page px: the content area's left/centre/right edge and top/middle/bottom, per the alignment below. */
+	textX: number;
+	textY: number;
+	/** How the text sits against (textX, textY); `middle`/`middle` is the centre of the shape. */
+	textHAlign: HAlign;
+	textVAlign: VAlign;
 	/** Text-box width (`TxtWidth`, falling back to the shape's own Width), px — the wrap width a renderer should pack `text`'s lines into. Visio wraps long lines to fit this at author time without storing the breaks, so it isn't reflected in `text` itself. */
 	textWidth: number;
 	fontSize: number; // px
+	/** Font settings the file sets for this shape's text; a field is absent when it does not, and the renderer then uses its own. */
+	fontFamily?: string;
+	fontColor?: string;
+	bold?: boolean;
+	italic?: boolean;
+	underline?: boolean;
 	bbox: { x: number; y: number; width: number; height: number }; // px, page space
 }
 
@@ -457,6 +469,8 @@ export function buildPath(
 	width: number,
 	height: number,
 	m: Mat,
+	/** Visio's `Rounding` cell: corner radius in the shape's own units (inches). 0 leaves every corner sharp. */
+	rounding = 0,
 ): { subpaths: RawSubpath[]; points: { x: number; y: number }[] } {
 	const subpaths: RawSubpath[] = [];
 	const points: { x: number; y: number }[] = [];
@@ -474,23 +488,33 @@ export function buildPath(
 		if (rows.length === 0) continue;
 		const parts: string[] = [];
 		let cx = 0, cy = 0;
+		// The section's corners in the shape's own units, kept so a straight-sided outline can be redrawn with
+		// rounded corners; a section with any curve is left exactly as built.
+		const local: { x: number; y: number }[] = [];
+		let straightOnly = true;
+		let moves = 0;
 		for (const [, row] of rows) {
 			const c = row.cells;
+			if (row.type === 'MoveTo' || row.type === 'RelMoveTo') moves++;
+			else if (row.type !== 'LineTo' && row.type !== 'RelLineTo') straightOnly = false;
 			switch (row.type) {
 				case 'MoveTo': {
 					cx = c.X ?? 0; cy = c.Y ?? 0;
+					local.push({ x: cx, y: cy });
 					const p = apply(m, cx, cy);
 					parts.push(`M ${p.x} ${p.y}`); points.push(p);
 					break;
 				}
 				case 'RelMoveTo': {
 					cx = (c.X ?? 0) * width; cy = (c.Y ?? 0) * height;
+					local.push({ x: cx, y: cy });
 					const p = apply(m, cx, cy);
 					parts.push(`M ${p.x} ${p.y}`); points.push(p);
 					break;
 				}
 				case 'RelLineTo': {
 					cx = (c.X ?? 0) * width; cy = (c.Y ?? 0) * height;
+					local.push({ x: cx, y: cy });
 					const p = apply(m, cx, cy);
 					parts.push(`L ${p.x} ${p.y}`); points.push(p);
 					break;
@@ -520,13 +544,23 @@ export function buildPath(
 					// into this same straight-line branch so the path stays valid.
 					if (c.X !== undefined) cx = c.X;
 					if (c.Y !== undefined) cy = c.Y;
+					local.push({ x: cx, y: cy });
 					const p = apply(m, cx, cy);
 					parts.push(`L ${p.x} ${p.y}`); points.push(p);
 					break;
 				}
 			}
 		}
-		subpaths.push({ d: parts.join(' '), fillOn: !section.noFill, strokeOn: !section.noLine });
+		let d = parts.join(' ');
+		if (rounding > 0 && straightOnly && moves === 1 && local.length >= 3) {
+			// A rectangle's last LineTo comes back to its start: that is a closed outline, and the repeated
+			// end point must not become a corner of its own.
+			const first = local[0]!, last = local[local.length - 1]!;
+			const closed = Math.abs(first.x - last.x) < 1e-9 && Math.abs(first.y - last.y) < 1e-9;
+			const corners = closed ? local.slice(0, -1) : local;
+			d = roundPolyline(corners, rounding, closed, p => apply(m, p.x, p.y)) || d;
+		}
+		subpaths.push({ d, fillOn: !section.noFill, strokeOn: !section.noLine });
 	}
 	return { subpaths, points };
 }
@@ -582,7 +616,7 @@ function collectShapes(
 		const masterId = shapeEl.getAttribute('Master');
 		const master = masterId ? loadMasterInfo(zip, mastersPath, masterId, masterCache) : null;
 		const geometry = mergeGeometry(master?.geometry, extractGeometry(shapeEl));
-		const { subpaths: rawSubpaths, points } = buildPath(geometry, width, height, m);
+		const { subpaths: rawSubpaths, points } = buildPath(geometry, width, height, m, numCell(shapeEl, 'Rounding', 0));
 
 		if (rawSubpaths.length > 0 && points.length > 0) {
 			const fillPatternIndex = numCell(shapeEl, 'FillPattern', 1);
@@ -613,7 +647,9 @@ function collectShapes(
 			}
 
 			const text = directChild(shapeEl, 'Text')?.textContent?.trim() ?? '';
-			const center = apply(m, width / 2, height / 2);
+			const layout = readTextLayout(shapeEl);
+			const placed = placeText({ ...layout.box, width, height });
+			const anchor = apply(m, placed.x, placed.y);
 			const xs = points.map(p => p.x), ys = points.map(p => p.y);
 			const minX = Math.min(...xs), maxX = Math.max(...xs);
 			const minY = Math.min(...ys), maxY = Math.max(...ys);
@@ -621,7 +657,7 @@ function collectShapes(
 			// as an ArcTo bulge — needs the same length-scale correction as buildPath
 			// applies to radii, not a bare *PX_PER_INCH (see that scaling note above).
 			const lengthScale = Math.sqrt(Math.abs(m.a * m.d - m.b * m.c));
-			const textWidth = numCell(shapeEl, 'TxtWidth', width) * lengthScale;
+			const textWidth = placed.contentWidth * lengthScale;
 
 			out.push({
 				id: shapeEl.getAttribute('ID') ?? '',
@@ -630,10 +666,17 @@ function collectShapes(
 				linePattern: linePatternIndex,
 				strokeWidth: numCell(shapeEl, 'LineWeight', 0.01) * PX_PER_INCH,
 				text,
-				textX: center.x,
-				textY: center.y,
+				textX: anchor.x,
+				textY: anchor.y,
+				textHAlign: placed.hAlign,
+				textVAlign: placed.vAlign,
 				textWidth,
 				fontSize: characterFontSize(shapeEl),
+				...(layout.font.family !== undefined ? { fontFamily: layout.font.family } : {}),
+				...(layout.font.color !== undefined ? { fontColor: layout.font.color } : {}),
+				...(layout.font.bold !== undefined ? { bold: layout.font.bold } : {}),
+				...(layout.font.italic !== undefined ? { italic: layout.font.italic } : {}),
+				...(layout.font.underline !== undefined ? { underline: layout.font.underline } : {}),
 				bbox: { x: minX, y: minY, width: maxX - minX, height: maxY - minY },
 			});
 		}

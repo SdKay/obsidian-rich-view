@@ -3,7 +3,7 @@ import type { VisioPage, VisioShape } from '../src/visioParser';
 import { VisioRenderer } from '../src/visioRenderer';
 
 const shape = (id: string, x: number, y: number, w: number, h: number): VisioShape => ({
-	id, subpaths: [], fillPattern: 1, linePattern: 1, strokeWidth: 1, text: '', textX: x, textY: y, textWidth: w, fontSize: 12,
+	id, subpaths: [], fillPattern: 1, linePattern: 1, strokeWidth: 1, text: '', textX: x, textY: y, textHAlign: 'middle', textVAlign: 'middle', textWidth: w, fontSize: 12,
 	bbox: { x, y, width: w, height: h },
 });
 
@@ -52,6 +52,29 @@ describe('VisioRenderer.getShapeBounds', () => {
 		const r = renderer([shape('a', 0, 0, 10, 10)]);
 		r.destroy();
 		expect(r.getShapeBounds('a')).toBeNull();
+	});
+
+	describe('a line that carries a label', () => {
+		// A connector's outline has no height (or no width), so its bounds alone would be an invisible mark.
+		const label = (): VisioShape => ({ ...shape('c', 100, 300, 234, 0), text: 'Linux/Rtos Standard API', textX: 217, textY: 300, textWidth: 228 });
+
+		it('is as tall as its text, and still as long as the line', () => {
+			const r = renderer([label()]);
+			r.setViewFromDisplay(100, 0, 0);
+			const b = r.getShapeBounds('c')!;
+			expect(b.h).toBeGreaterThan(0);
+			expect(b.x).toBeLessThanOrEqual(100);
+			expect(b.x + b.w).toBeGreaterThanOrEqual(334);
+		});
+		it('scales with the zoom like any other shape', () => {
+			const r = renderer([label()]);
+			r.setViewFromDisplay(100, 0, 0);
+			const one = r.getShapeBounds('c')!;
+			r.setViewFromDisplay(200, 0, 0);
+			const two = r.getShapeBounds('c')!;
+			expect(two.h).toBeCloseTo(one.h * 2, 6);
+			expect(two.w).toBeCloseTo(one.w * 2, 6);
+		});
 	});
 });
 

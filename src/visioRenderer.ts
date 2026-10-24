@@ -1,4 +1,7 @@
 import type { BoundingBox, DrawingRenderer, ShapeHit } from './drawingRenderer';
+import { canvasFont, fontStack } from './visioFont';
+import { firstBaselineY, LINE_HEIGHT_EM } from './visioTextLines';
+import { markBox } from './visioMarkBox';
 import type { VisioPage, VisioShape } from './visioParser';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -123,7 +126,10 @@ function buildHatchDefs(doc: Document, entries: { variantIdx: number; color: str
  * content (this plugin's diagrams have both), so lines are positioned with
  * plain per-tspan `y` values instead.
  */
-const BASELINE_CENTER_OFFSET = 0.32;
+/** A colour from the file as an SVG paint, only when it is a plain hex colour; anything else is ignored rather than written into the page. */
+function safeColor(value: string | undefined): string | undefined {
+	return value !== undefined && /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(value) ? value : undefined;
+}
 
 let measureCtx: CanvasRenderingContext2D | null | undefined;
 
@@ -161,10 +167,10 @@ function splitIntoUnits(line: string): string[] {
 	return units;
 }
 
-function wrapLine(line: string, maxWidth: number, fontSize: number): string[] {
+function wrapLine(line: string, maxWidth: number, font: string): string[] {
 	const ctx = getMeasureContext();
 	if (!ctx || maxWidth <= 0 || !line) return [line];
-	ctx.font = `${fontSize}px sans-serif`;
+	ctx.font = font;
 	const units = splitIntoUnits(line);
 	const wrapped: string[] = [];
 	let current = '';
@@ -290,15 +296,16 @@ export class VisioRenderer implements DrawingRenderer {
 		return null;
 	}
 
-	/** Same transform and box as `getShapeAt`, looked up by shape id. */
+	/** Same transform as `getShapeAt`, looked up by shape id. The box is the shape's outline, widened to its label for a line that has no width or height. */
 	getShapeBounds(id: string): { x: number; y: number; w: number; h: number } | null {
 		const s = this.shapes.find(shape => shape.id === id);
 		if (!s) return null;
+		const box = markBox(s);
 		return {
-			x: (s.bbox.x + this.tx) * this.scale,
-			y: (s.bbox.y + this.ty) * this.scale,
-			w: s.bbox.width * this.scale,
-			h: s.bbox.height * this.scale,
+			x: (box.x + this.tx) * this.scale,
+			y: (box.y + this.ty) * this.scale,
+			w: box.w * this.scale,
+			h: box.h * this.scale,
 		};
 	}
 
@@ -385,13 +392,21 @@ export class VisioRenderer implements DrawingRenderer {
 				// (see wrapLine's docstring). Apply both, then lay every resulting
 				// line out as its own <tspan> with an explicit y (not dy off
 				// dominant-baseline — unreliable across mixed CJK/Latin content).
-				const lines = shape.text.split('\n').flatMap(l => wrapLine(l.trim(), shape.textWidth, fontSize));
-				const lineHeight = fontSize * 1.2;
-				const firstLineY = shape.textY - (lines.length - 1) * lineHeight / 2 + fontSize * BASELINE_CENTER_OFFSET;
+				// The width is measured in the same font that is drawn, or the breaks would land in the wrong places.
+				const measureFont = canvasFont(fontSize, shape.fontFamily, shape.bold, shape.italic);
+				const lines = shape.text.split('\n').flatMap(l => wrapLine(l.trim(), shape.textWidth, measureFont));
+				const lineHeight = fontSize * LINE_HEIGHT_EM;
+				const firstLineY = firstBaselineY(shape.textVAlign, shape.textY, lines.length, fontSize);
 				const text = doc.createElementNS(SVG_NS, 'text');
-				text.setAttribute('text-anchor', 'middle');
+				text.setAttribute('text-anchor', shape.textHAlign);
 				text.setAttribute('font-size', String(fontSize));
-				text.setAttribute('fill', '#000000');
+				text.setAttribute('fill', safeColor(shape.fontColor) ?? '#000000');
+				// Only what the file sets is applied; anything it leaves out keeps the font and weight the text always had.
+				const family = fontStack(shape.fontFamily);
+				if (family) text.setAttribute('font-family', family);
+				if (shape.bold) text.setAttribute('font-weight', 'bold');
+				if (shape.italic) text.setAttribute('font-style', 'italic');
+				if (shape.underline) text.setAttribute('text-decoration', 'underline');
 				text.classList.add('drawing-view-visio-text');
 				lines.forEach((line, i) => {
 					const tspan = doc.createElementNS(SVG_NS, 'tspan');
