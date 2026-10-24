@@ -1,7 +1,7 @@
 {
     "id": "rich-view",
     "name": "Rich View",
-    "version": "0.2.2",
+    "version": "1.0.0",
     "minAppVersion": "1.8.7",
     "description": "Render draw.io diagrams, Visio drawings and PowerPoint slides inline in your notes — zoom, pan, multi-page tabs, shape links, a magnifier, and third-party shape libraries. More file formats planned.",
     "author": "sdking.xing",

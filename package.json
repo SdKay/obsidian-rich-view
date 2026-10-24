@@ -1,6 +1,6 @@
 {
     "name": "rich-view",
-    "version": "0.2.2",
+    "version": "1.0.0",
     "description": "Render draw.io, Visio (and, in future, other rich file formats — ppt, Word, CAD, ...) inline in Obsidian notes.",
     "main": "main.js",
     "type": "module",
