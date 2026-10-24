@@ -58,6 +58,9 @@ export class RichFileView extends FileView {
 		this.viewer = viewer;
 		this.addChild(viewer);
 		viewer.load();
+		viewer.whenReady(() => {
+			if (this.viewer === viewer) this.pending.setConsumer(request => { viewer.showSearchRequest(request); });
+		});
 		return Promise.resolve();
 	}
 

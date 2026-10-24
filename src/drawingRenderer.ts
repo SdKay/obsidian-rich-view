@@ -53,6 +53,16 @@ export interface DrawingRenderer {
 	 * for hover highlighting — any non-layer shape, not just linked ones.
 	 */
 	getShapeAt(px: number, py: number): ShapeHit | null;
+	/**
+	 * Where the shape with this id is on screen, in the same panEl-relative pixels `getShapeAt` reports,
+	 * or null when the current page has no such shape. Used to mark a search hit.
+	 */
+	getShapeBounds(id: string): ShapeHit['bounds'] | null;
+	/**
+	 * Font size of the shape's text in diagram units (not scaled by the current zoom), or null when the shape
+	 * is unknown or has no text size. Used to pick a zoom at which a hit reads like body text.
+	 */
+	getShapeFontSize(id: string): number | null;
 	/** Return the link href for the shape at panEl-relative coordinates, or null. */
 	getLinkAt(px: number, py: number): string | null;
 	destroy(): void;

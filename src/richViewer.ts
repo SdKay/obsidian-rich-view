@@ -1,5 +1,6 @@
 import { App, Component, TFile } from 'obsidian';
 import type { ViewOptions } from './viewParams';
+import type { SearchRequest } from './searchRequest';
 import { contentCache, contentEquals, isBinaryDiagramFormat, type FileContent } from './diagramFileContent';
 
 /** Delay before reloading after the viewed file changes on disk, so a burst of saves reloads once. */
@@ -38,6 +39,8 @@ export abstract class RichViewer extends Component {
 	 */
 	protected unloaded = false;
 	private reloadTimer = 0;
+	private ready = false;
+	private readonly readyListeners: (() => void)[] = [];
 
 	constructor(ctx: ViewerContext) {
 		super();
@@ -68,6 +71,21 @@ export abstract class RichViewer extends Component {
 
 	/** Release everything the format created (renderers, child components). */
 	protected abstract teardown(): void;
+
+	/** Show a hit handed over by Rich Search. Formats that can mark or jump override this; the default ignores it. */
+	showSearchRequest(_request: SearchRequest): void {}
+
+	/** Called by a format once its first draw is done; `onReady` fires then, and at once if that already happened. */
+	protected markReady(): void {
+		this.ready = true;
+		this.readyListeners.splice(0).forEach(listener => { listener(); });
+	}
+
+	/** Runs `listener` when the viewer can accept a search request. A viewer that never becomes ready never calls it. */
+	whenReady(listener: () => void): void {
+		if (this.ready) listener();
+		else this.readyListeners.push(listener);
+	}
 
 	// ── Lifecycle ───────────────────────────────────────────────────────────
 

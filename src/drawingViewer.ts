@@ -14,6 +14,12 @@ import { Magnifier } from './magnifier';
 import { switchFile } from './switchFile';
 import type { FileContent } from './diagramFileContent';
 import { RichViewer, type ViewerContext } from './richViewer';
+import { SearchMarks } from './searchMarks';
+import { drawioPageUnits, pageOfAnchor, visioPageUnits } from './pageUnits';
+import { offsetKeepingPoint, revealShift } from './revealShift';
+import { bodyFontPx, readableScale } from './readableZoom';
+import type { SearchRequest } from './searchRequest';
+import type { MarkableUnit } from './matchTargets';
 
 /** Either format's page — both carry a `name` for tabs/param-string purposes. */
 type AnyPage = DrawioPage | VisioPage;
@@ -43,6 +49,9 @@ export class DrawingViewer extends RichViewer {
 
 	/** draw.io only — null for Visio, which has no stencil-library concept. */
 	private stencilLibs: StencilLibs | null = null;
+	private searchMarks: SearchMarks | null = null;
+	/** A search hit asked to be shown once the page it names has been drawn. */
+	private pendingReveal = false;
 
 	constructor(
 		ctx: ViewerContext,
@@ -89,6 +98,7 @@ export class DrawingViewer extends RichViewer {
 		if (this.controller) { this.removeChild(this.controller); this.controller = null; }
 		if (this.magnifier) { this.removeChild(this.magnifier); this.magnifier = null; }
 		if (this.linkHover) { this.removeChild(this.linkHover); this.linkHover = null; }
+		if (this.searchMarks) { this.removeChild(this.searchMarks); this.searchMarks = null; }
 		if (this.stencilLibs) { this.removeChild(this.stencilLibs); this.stencilLibs = null; }
 		if (this.frame) { this.removeChild(this.frame); this.frame = null; }
 		this.container.empty();
@@ -216,7 +226,7 @@ export class DrawingViewer extends RichViewer {
 		// Create renderer + controller once (into panEl); reuse for page switches.
 		if (!this.renderer) {
 			this.renderer = this.isVisio ? new VisioRenderer(panEl) : new GraphRenderer(panEl);
-			this.renderer.onViewChange(() => this.updateStatus());
+			this.renderer.onViewChange(() => { this.updateStatus(); this.searchMarks?.refresh(); });
 			const host: ViewportHost = {
 				getCommittedScale: () => this.renderer?.getScale() ?? 1,
 				getCommittedOffset: () => this.renderer?.getDisplayOffset() ?? { x: 0, y: 0 },
@@ -257,6 +267,7 @@ export class DrawingViewer extends RichViewer {
 			this.defaultDisplayY = this.options.offsetY;
 			this.renderer.setViewFromDisplay(this.options.zoom, this.options.offsetX, this.options.offsetY);
 			this.updateStatus();
+			this.afterPageDrawn();
 		} else {
 			// Either auto-fit (zoom=0) or zoom-only (centre at given zoom).
 			// Defer until the container has real pixel dimensions.
@@ -278,6 +289,7 @@ export class DrawingViewer extends RichViewer {
 				this.defaultDisplayX = off.x;
 				this.defaultDisplayY = off.y;
 				this.updateStatus();
+				this.afterPageDrawn();
 			});
 		}
 	}
@@ -349,6 +361,77 @@ export class DrawingViewer extends RichViewer {
 			editLink: (cellId, link) => this.updateCellLink(cellId, link),
 		});
 		this.addChild(this.linkHover);
+
+		this.searchMarks = new SearchMarks(this.app, this.panEl!, {
+			renderer: () => this.renderer,
+			units: () => this.currentUnits(),
+			filePath: () => this.options.filename,
+		});
+		this.addChild(this.searchMarks);
+	}
+
+	/** The searchable text units of the page on screen. */
+	private currentUnits(): MarkableUnit[] {
+		const page = this.pages[this.currentPage];
+		if (!page) return [];
+		return this.isVisio ? visioPageUnits(page as VisioPage) : drawioPageUnits(page as DrawioPage);
+	}
+
+	/**
+	 * Show a search hit: go to the page its anchor names, then mark the matches and bring the opened one
+	 * into view. A stale or foreign anchor leaves the default page and view alone (contract 5.3).
+	 */
+	override showSearchRequest(request: SearchRequest): void {
+		const pageName = pageOfAnchor(request.anchor);
+		const index = pageName === null ? -1 : this.pages.findIndex(p => p.name === pageName);
+		this.pendingReveal = true;
+		if (index !== -1 && index !== this.currentPage) this.switchPage(index);
+		else this.afterPageDrawn();
+	}
+
+	/** Runs once the shown page is laid out: redraw the marks, then reveal a pending hit. */
+	private afterPageDrawn(): void {
+		this.markReady();
+		this.searchMarks?.resubscribe();
+		this.searchMarks?.refresh();
+		if (!this.pendingReveal) return;
+		this.pendingReveal = false;
+		this.revealOpened();
+	}
+
+	/**
+	 * Brings the opened hit into view. If the diagram is drawn too small to read, first zooms in (around the
+	 * shape, so it stays put) until its text is about as large as the note's body text; a view already larger than
+	 * that is left alone. Then pans just enough to show the whole shape.
+	 */
+	private revealOpened(): void {
+		const renderer = this.renderer;
+		const graphEl = this.graphEl;
+		if (!renderer || !graphEl) return;
+		// The jump starts from the committed view; a half-finished gesture would add a second transform on top.
+		this.controller?.clearVisual();
+
+		const first = this.searchMarks?.openedBounds();
+		if (!first) return;
+		const id = this.searchMarks?.openedShapeId() ?? null;
+		const rect = graphEl.getBoundingClientRect();
+		const viewport = { width: rect.width || graphEl.offsetWidth, height: rect.height || graphEl.offsetHeight };
+
+		const scale = renderer.getScale();
+		const target = readableScale(scale, id === null ? null : renderer.getShapeFontSize(id), bodyFontPx(graphEl.ownerDocument));
+		if (target !== null) {
+			const centre = { x: first.x + first.w / 2, y: first.y + first.h / 2 };
+			const next = offsetKeepingPoint(centre, renderer.getDisplayOffset(), scale, target);
+			renderer.setViewFromDisplay(target * 100, next.x, next.y);
+		}
+
+		// Bounds depend on the view, so read them again after any zoom.
+		const box = this.searchMarks?.openedBounds();
+		if (!box) return;
+		const shift = revealShift(box, viewport);
+		if (!shift) return;
+		const off = renderer.getDisplayOffset();
+		renderer.setViewFromDisplay(renderer.getScale() * 100, off.x + shift.dx, off.y + shift.dy);
 	}
 
 	private async updateCellLink(cellId: string, link: string): Promise<void> {

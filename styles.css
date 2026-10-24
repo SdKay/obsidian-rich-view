@@ -560,3 +560,42 @@
     margin-top: var(--size-4-1);
     color: var(--text-warning);
 }
+
+/* ── Search marks (Rich Search hits), contract 5.9 / 5.10 ── */
+/* Lives inside the pan layer so it shares the diagram's transform. The class is repeated to
+   outrank theme rules without !important. */
+.drawing-view-pan .drawing-view-search-mark.drawing-view-search-mark {
+    position: absolute;
+    left: var(--dw-hl-x, 0px);
+    top: var(--dw-hl-y, 0px);
+    width: var(--dw-hl-w, 0px);
+    height: var(--dw-hl-h, 0px);
+    box-sizing: border-box;
+    pointer-events: none;
+    z-index: 6;
+    /* The mark sits on top of the shape, so it is multiplied with what is below: the colour shows
+       at full strength and the text stays readable. */
+    mix-blend-mode: multiply;
+    background-color: color-mix(in srgb, var(--rs-match-bg, #ccff00) 45%, transparent);
+    border-radius: 2px;
+}
+
+.drawing-view-pan .drawing-view-search-mark.drawing-view-search-mark.is-opened {
+    z-index: 7;
+    background-color: var(--rs-match-bg, #ccff00);
+    color: var(--rs-match-fg, #000000);
+    box-shadow: 0 0 0 1px var(--rs-match-fg, #000000);
+}
+
+/* The diagram is inverted in dark mode; invert the mark back so the user's colour shows as chosen. */
+.theme-dark .drawing-view-pan .drawing-view-search-mark.drawing-view-search-mark {
+    filter: invert(1) hue-rotate(180deg);
+}
+
+/* Keyword marks inside a slide text box: positioned in the box's own coordinates. */
+.slide-view-keyword-mark {
+    position: absolute;
+    box-sizing: border-box;
+    pointer-events: none;
+    z-index: 2;
+}

@@ -2,6 +2,9 @@ import { Graph, ModelXmlSerializer, InternalEvent, type ShapeValue, type Cell } 
 import { registerBuiltinShapes } from './builtinShapes';
 import type { BoundingBox, DrawingRenderer, ShapeHit } from './drawingRenderer';
 
+/** draw.io draws a label at 12px when a cell sets no `fontSize`. */
+const DRAWIO_DEFAULT_FONT_SIZE = 12;
+
 // Register draw.io built-in JS shapes (curlyBracket etc.) once at module load.
 registerBuiltinShapes();
 
@@ -288,6 +291,28 @@ export class GraphRenderer implements DrawingRenderer {
 		const state = this.graph.getView().getState(shapeCell);
 		if (!state) return null;
 		return { id, link: this.extractLink(shapeCell), bounds: { x: state.x, y: state.y, w: state.width, h: state.height } };
+	}
+
+	/**
+	 * Same box `getShapeAt` reports (the cell's view state), looked up by id. An id that names a
+	 * layer, an edge without a laid-out state, or nothing at all gives null.
+	 */
+	getShapeBounds(id: string): { x: number; y: number; w: number; h: number } | null {
+		const dm = this.graph.getDataModel();
+		const cell = dm.getCell(id);
+		if (!cell || dm.isLayer(cell)) return null;
+		const state = this.graph.getView().getState(cell);
+		if (!state) return null;
+		return { x: state.x, y: state.y, w: state.width, h: state.height };
+	}
+
+	/** An explicit `fontSize` style, else draw.io's own default of 12; null for a layer or an unknown id. */
+	getShapeFontSize(id: string): number | null {
+		const dm = this.graph.getDataModel();
+		const cell = dm.getCell(id);
+		if (!cell || dm.isLayer(cell)) return null;
+		const size = this.graph.getView().getState(cell)?.style.fontSize;
+		return typeof size === 'number' && size > 0 ? size : DRAWIO_DEFAULT_FONT_SIZE;
 	}
 
 	private extractLink(cell: Cell | null | undefined): string | null {

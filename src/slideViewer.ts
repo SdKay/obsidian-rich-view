@@ -1,10 +1,15 @@
-import { PptxViewer, RECOMMENDED_ZIP_LIMITS } from '@aiden0z/pptx-renderer';
+import { buildTextIndex, PptxViewer, RECOMMENDED_ZIP_LIMITS, type SearchHighlightHandle, type TextIndexEntry } from '@aiden0z/pptx-renderer';
 import type { FileContent } from './diagramFileContent';
 import type { FrameContent } from './frame/types';
 import { ViewerFrame } from './frame/viewerFrame';
 import { RichViewer, type ViewerContext } from './richViewer';
 import { clampZoomPercent, fitZoomPercent, wheelZoomPercent } from './slideFit';
 import { switchFile } from './switchFile';
+import { chooseMarks } from './matchTargets';
+import { findSearchHost, readLiveSearch, subscribeToSearch } from './searchHost';
+import type { SearchRequest } from './searchRequest';
+import { markStyle, openedPosition, slideUnits, toSearchResult, uniqueByShape } from './slideMarks';
+import { addKeywordMarks } from './slideKeywordMarks';
 
 /**
  * Paginated-document viewer (PPT). A page flow, not an infinite canvas, so it
@@ -19,6 +24,14 @@ export class SlideViewer extends RichViewer {
 	private current = 0;
 	/** Zoom to restore on load (`zoom=` in the code block); 0 means fit the whole slide. */
 	private pinnedZoom: number;
+	/** Text of every box and cell in the deck, built once per opened deck and used to mark search hits. */
+	private textIndex: TextIndexEntry[] = [];
+	private marks: SearchHighlightHandle[] = [];
+	/** Keyword-level marks added straight into text boxes; removed with the rest on every redraw. */
+	private keywordMarks: HTMLElement[] = [];
+	private stopSearch: (() => void) | null = null;
+	/** Bumped on every redraw of the marks, so a slow earlier pass cannot draw over a newer one. */
+	private markGeneration = 0;
 
 	constructor(ctx: ViewerContext) {
 		super(ctx);
@@ -30,8 +43,14 @@ export class SlideViewer extends RichViewer {
 	}
 
 	protected teardown(): void {
+		this.stopSearch?.();
+		this.stopSearch = null;
+		this.markGeneration++;
+		this.marks = [];
+		this.keywordMarks = [];
 		this.viewer?.destroy();
 		this.viewer = null;
+		this.textIndex = [];
 	}
 
 	protected renderContent(content: FileContent): void {
@@ -61,10 +80,17 @@ export class SlideViewer extends RichViewer {
 			});
 			if (this.unloaded || this.stageEl !== stage) { viewer.destroy(); return; }
 			this.viewer = viewer;
+			this.textIndex = viewer.presentationData
+				? buildTextIndex(viewer.presentationData, { includeShapes: true, includeTables: true, includeGroups: true })
+				: [];
 			this.current = this.initialSlide();
 			await viewer.goToSlide(this.current);
 			await (this.pinnedZoom > 0 ? viewer.setZoom(this.pinnedZoom) : this.refit());
 			this.publish();
+			this.stopSearch?.();
+			this.stopSearch = subscribeToSearch(findSearchHost(this.app), () => { void this.refreshMarks(); });
+			await this.refreshMarks();
+			this.markReady();
 		} catch (err) {
 			console.error('SlideViewer:', err);
 			stage.empty();
@@ -96,6 +122,57 @@ export class SlideViewer extends RichViewer {
 		await viewer.goToSlide(this.current);
 		this.frame?.setCurrentPage(this.current);
 		this.publish();
+		await this.refreshMarks();
+	}
+
+	/** Go to the slide a hit names; the marks follow the slide on screen. A foreign or stale anchor changes nothing. */
+	override showSearchRequest(request: SearchRequest): void {
+		const slide = slideOfAnchor(request.anchor);
+		const viewer = this.viewer;
+		if (slide === null || !viewer || slide < 1 || slide > viewer.slideCount) {
+			void this.refreshMarks();
+			return;
+		}
+		void this.goTo(slide - 1);
+	}
+
+	/**
+	 * Marks the text boxes of the slide on screen that match the search, the opened one brighter. The library
+	 * only draws whole-shape overlays (no character-level mark), so a text box is marked once however many of
+	 * its paragraphs matched — contract 5.6's floor for this format.
+	 */
+	private async refreshMarks(): Promise<void> {
+		const generation = ++this.markGeneration;
+		const viewer = this.viewer;
+		if (!viewer || this.unloaded) return;
+		for (const mark of this.marks) mark.dispose();
+		this.marks = [];
+		for (const mark of this.keywordMarks) mark.remove();
+		this.keywordMarks = [];
+
+		const host = findSearchHost(this.app);
+		const { query, hit } = readLiveSearch(host);
+		const units = slideUnits(this.textIndex, this.current);
+		const chosen = chooseMarks(host, units, query, hit, this.options.filename);
+		const byUnit = new Map(units.map(u => [u, u.entry]));
+		const marked = uniqueByShape(chosen.map(c => ({ ...c, entry: byUnit.get(c.unit as (typeof units)[number])! })));
+		// The opened match, as (text box, paragraph of that box, match within it). Paragraphs are counted as in the index.
+		const openedAt = openedPosition(units, chosen);
+
+		const slideEl = this.stageEl?.querySelector<HTMLElement>('div[style*="transform"]') ?? null;
+		for (const m of marked) {
+			const here = openedAt && openedAt.nodeId === m.entry.nodeId ? { paragraph: openedAt.paragraph, match: openedAt.match } : null;
+			// Exact keywords where the drawn text can be measured; otherwise the whole box, so a hit is never unmarked.
+			const exact = query && slideEl ? addKeywordMarks(slideEl, m.entry, host, query, here) : null;
+			if (exact) { this.keywordMarks.push(...exact); continue; }
+			const opened = here !== null;
+			const handle = await viewer.highlightSearchResult(toSearchResult(m.entry), {
+				scrollIntoView: false,
+				style: markStyle(opened),
+			});
+			if (generation !== this.markGeneration || this.unloaded) { handle?.dispose(); return; }
+			if (handle) this.marks.push(handle);
+		}
 	}
 
 	private onWheel(e: WheelEvent): void {
@@ -151,4 +228,10 @@ export class SlideViewer extends RichViewer {
 			specific: [],
 		};
 	}
+}
+
+function slideOfAnchor(anchor: unknown): number | null {
+	if (typeof anchor !== 'object' || anchor === null) return null;
+	const slide = (anchor as { slide?: unknown }).slide;
+	return typeof slide === 'number' && Number.isInteger(slide) ? slide : null;
 }

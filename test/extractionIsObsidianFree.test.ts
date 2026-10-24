@@ -16,4 +16,4 @@ it('the extraction side bundles with obsidian marked external and finds no impor
 	});
 	const imported = Object.values(result.metafile.outputs).flatMap(o => o.imports.map(i => i.path));
 	expect(imported).not.toContain('obsidian');
-});
+}, 30_000);

@@ -290,19 +290,39 @@ export class VisioRenderer implements DrawingRenderer {
 		return null;
 	}
 
+	/** Same transform and box as `getShapeAt`, looked up by shape id. */
+	getShapeBounds(id: string): { x: number; y: number; w: number; h: number } | null {
+		const s = this.shapes.find(shape => shape.id === id);
+		if (!s) return null;
+		return {
+			x: (s.bbox.x + this.tx) * this.scale,
+			y: (s.bbox.y + this.ty) * this.scale,
+			w: s.bbox.width * this.scale,
+			h: s.bbox.height * this.scale,
+		};
+	}
+
+	/** `fontSize` is already in the page's own pixels, so it is unaffected by the current zoom. */
+	getShapeFontSize(id: string): number | null {
+		const size = this.shapes.find(shape => shape.id === id)?.fontSize;
+		return size !== undefined && size > 0 ? size : null;
+	}
+
 	/** Visio shape-level hyperlinks aren't parsed yet (see visioParser.ts scope notes) — no links to follow. */
 	getLinkAt(_px: number, _py: number): string | null {
 		return null;
 	}
 
 	destroy(): void {
-		this.container.empty();
+		this.svgEl?.remove();
 		this.svgEl = null;
 		this.groupEl = null;
+		this.shapes = [];
 	}
 
 	private buildSvg(): void {
-		this.container.empty();
+		// Only this renderer's own drawing is replaced: other components (search marks, hover highlight) share the container.
+		this.svgEl?.remove();
 		const doc = this.container.ownerDocument;
 		const svg = doc.createElementNS(SVG_NS, 'svg');
 		svg.setAttribute('width', '100%');
