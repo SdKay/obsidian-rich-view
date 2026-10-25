@@ -12,8 +12,9 @@ interface CommonActionSpec {
 /** The single source of truth for common-action order, Lucide icon names and labels. */
 export const COMMON_ACTIONS: readonly CommonActionSpec[] = [
 	{ id: 'magnifier', icon: 'zoom-in', labelKey: 'magnifier' },
-	{ id: 'fit', icon: 'scan', labelKey: 'autoFit' },
+	{ id: 'fit', icon: 'scaling', labelKey: 'autoFit' },
 	{ id: 'apply-view', icon: 'pin', labelKey: 'applyView' },
+	{ id: 'copy-block', icon: 'clipboard-copy', labelKey: 'copyAsCodeBlock' },
 	{ id: 'switch-file', icon: 'folder-open', labelKey: 'switchFile' },
 	{ id: 'open-external', icon: 'external-link', labelKey: 'openExternal' },
 	{ id: 'fullscreen', icon: 'maximize', labelKey: 'fullscreen' },

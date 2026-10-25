@@ -194,9 +194,10 @@ export class SlideViewer extends RichViewer {
 	}
 
 	/** Current page + zoom as a code-block param line; `pinned: false` keeps zoom unpinned (auto-fit). */
-	private paramString(opts: { pinned: boolean }): string {
+	private paramString(opts: { pinned: boolean; height?: number }): string {
 		const parts = [`file=${this.options.filename}`];
-		if (this.options.height > 0) parts.push(`height=${this.options.height}`);
+		const height = opts.height ?? this.options.height;
+		if (height > 0) parts.push(`height=${height}`);
 		if (this.current > 0) parts.push(`page-index=${this.current + 1}`);
 		const zoom = opts.pinned ? Math.round(this.viewer?.zoomPercent ?? 0) : this.pinnedZoom;
 		if (zoom > 0) parts.push(`zoom=${zoom}`);
@@ -213,6 +214,7 @@ export class SlideViewer extends RichViewer {
 	private frameContent(viewer: PptxViewer): FrameContent {
 		const common: FrameContent['common'] = {
 			fit: () => { this.pinnedZoom = 0; void this.refit(); },
+			'copy-block': () => { this.copyAsCodeBlock(this.paramString({ pinned: true, height: this.heightForCopy() })); },
 			'open-external': () => { this.openExternal(); },
 		};
 		const writeParams = this.writeParams;

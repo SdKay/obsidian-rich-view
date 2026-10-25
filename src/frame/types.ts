@@ -1,5 +1,5 @@
 /** Actions every viewer kind can offer, rendered in a fixed order so button positions never shift between formats. */
-export type CommonActionId = 'magnifier' | 'fit' | 'apply-view' | 'switch-file' | 'open-external' | 'fullscreen';
+export type CommonActionId = 'magnifier' | 'fit' | 'apply-view' | 'copy-block' | 'switch-file' | 'open-external' | 'fullscreen';
 
 /** An action only one format has (e.g. a presentation mode); shown after the divider. */
 export interface FrameAction {

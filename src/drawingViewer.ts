@@ -178,6 +178,7 @@ export class DrawingViewer extends RichViewer {
 		const common: FrameContent['common'] = {
 			magnifier: () => { this.magnifier?.toggle(); },
 			fit: () => { this.autoFitNow(); },
+			'copy-block': () => { this.copyAsCodeBlock(this.buildParamString(this.heightForCopy())); },
 			'open-external': () => { this.openExternal(); },
 		};
 		const writeParams = this.writeParams;
@@ -295,9 +296,9 @@ export class DrawingViewer extends RichViewer {
 	}
 
 	/** Build the param string representing the current viewer state. */
-	private buildParamString(): string {
+	private buildParamString(height = this.options.height): string {
 		const parts: string[] = [`file=${this.options.filename}`];
-		if (this.options.height > 0) parts.push(`height=${this.options.height}`);
+		if (height > 0) parts.push(`height=${height}`);
 
 		// Page — use name if available, otherwise page-index (1-based)
 		if (this.pages.length > 1) {

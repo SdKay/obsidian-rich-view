@@ -1,4 +1,7 @@
-import { App, Component, TFile } from 'obsidian';
+import { App, Component, Notice, TFile } from 'obsidian';
+import { blockHeight, formatCodeBlock } from './codeBlockText';
+import { isFullscreen } from './frame/fullscreen';
+import { t } from './i18n';
 import type { ViewOptions } from './viewParams';
 import type { SearchRequest } from './searchRequest';
 import { contentCache, contentEquals, isBinaryDiagramFormat, type FileContent } from './diagramFileContent';
@@ -109,6 +112,26 @@ export abstract class RichViewer extends Component {
 		(this.app as unknown as { openWithDefaultApp(p: string): Promise<void> })
 			.openWithDefaultApp(this.options.filename)
 			.catch((err: unknown) => console.error('RichViewer open:', err));
+	}
+
+	/** The `height=` a copied block gets: as tall as the viewer is on screen now, so zoom and offset still fit. */
+	protected heightForCopy(): number {
+		return blockHeight({
+			measured: this.container.getBoundingClientRect().height,
+			fullscreen: isFullscreen(this.container),
+			configured: this.options.height,
+		});
+	}
+
+	/** Put a `rich-view` code block for `params` on the clipboard; works in a note and in a file tab alike. */
+	protected copyAsCodeBlock(params: string): void {
+		// The window this viewer is in, so a popout window writes to its own clipboard.
+		this.container.win.navigator.clipboard.writeText(formatCodeBlock(params))
+			.then(() => { new Notice(t('copiedCodeBlock')); })
+			.catch((err: unknown) => {
+				console.error('RichViewer copy:', err);
+				new Notice(t('copyFailed'));
+			});
 	}
 
 	protected resolveFile(filename: string): TFile | null {
