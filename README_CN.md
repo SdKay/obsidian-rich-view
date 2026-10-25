@@ -1,9 +1,7 @@
 <div align="center">
 
-<img src="./rich-view-demo.gif" alt="Rich View 演示" width="720" />
-
 <p>
-  <b>🔍 缩放 &nbsp;·&nbsp; 🖱️ 平移 &nbsp;·&nbsp; 📄 多页 &nbsp;·&nbsp; 🎞️ 幻灯片 &nbsp;·&nbsp; 🔗 图形链接 &nbsp;·&nbsp; 🔎 放大镜 &nbsp;·&nbsp; ⤢ 全屏 &nbsp;·&nbsp; 📦 三方图形库 &nbsp;·&nbsp; 🌙 深色模式</b>
+  <b>🔍 缩放 &nbsp;·&nbsp; 🖱️ 平移 &nbsp;·&nbsp; 📄 多页 &nbsp;·&nbsp; 🎞️ 幻灯片 &nbsp;·&nbsp; 🗂️ 标签页打开 &nbsp;·&nbsp; 🔗 图形链接 &nbsp;·&nbsp; 🔎 放大镜 &nbsp;·&nbsp; ⤢ 全屏 &nbsp;·&nbsp; 📦 三方图形库 &nbsp;·&nbsp; 🖍️ 搜索高亮 &nbsp;·&nbsp; 🌙 深色模式</b>
 </p>
 
 <p>
@@ -22,12 +20,16 @@
 </p>
 
 <p>
-  <a href="README.md">English</a> ·
+  <a href="#功能">功能</a> ·
+  <a href="#演示">演示</a> ·
   <a href="#使用方法">使用方法</a> ·
+  <a href="#在标签页中打开文件">标签页</a> ·
+  <a href="#配合-rich-search-搜索">搜索</a> ·
   <a href="#三方图形库">三方图形库</a> ·
   <a href="#操作方式">操作方式</a> ·
   <a href="#设置项">设置项</a> ·
-  <a href="#安装">安装</a>
+  <a href="#安装">安装</a> ·
+  <a href="README.md">English</a>
 </p>
 
 <p>
@@ -35,23 +37,102 @@
   <br/><sub>关注微信公众号，获取更多 Obsidian 插件与工具</sub>
 </p>
 
-<p>
-  🧩 顺便看看我的另一个插件 <b>Rich Table</b> —— 支持合并单元格、类型化列、样式与双向链接的交互式表格：
-  <a href="https://github.com/SdKay/obsidian-rich-table">GitHub</a> ·
-  <a href="obsidian://show-plugin?id=rich-table">去商店中安装</a>
-</p>
+<table>
+  <thead>
+    <tr><th colspan="3">我的其他插件</th></tr>
+    <tr><th>插件</th><th>简介</th><th>安装页</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><a href="https://github.com/SdKay/obsidian-rich-table"><b>Rich Table</b></a></td>
+      <td>笔记里的类电子表格，外加 Excel 查看器；可被 Rich Search 搜索</td>
+      <td><a href="obsidian://show-plugin?id=rich-table">在 Obsidian 中打开</a></td>
+    </tr>
+    <tr>
+      <td><a href="https://github.com/SdKay/obsidian-rich-search"><b>Rich Search</b></a></td>
+      <td>
+        <b>搜索：</b>范围、正则、全词、历史记录<br/>
+        <b>跨文件：</b>能搜 draw.io、Visio、PowerPoint 文件里的文字，打开时标出命中位置
+      </td>
+      <td><a href="obsidian://show-plugin?id=rich-search">在 Obsidian 中打开</a></td>
+    </tr>
+  </tbody>
+</table>
 
 </div>
 
-在 Obsidian 笔记中内嵌渲染各类富文件格式——支持流畅缩放平移、多页标签、图形链接，以及完整的三方图形库支持。目前支持 [draw.io](https://www.drawio.com/) `.drawio`、Visio `.vsdx` 和 PowerPoint `.pptx` 文件，未来会支持更多格式（Word、CAD 等）。
+---
+
+在笔记里直接看 draw.io、Visio 和 PowerPoint 文件。能缩放、平移、翻页、点图形链接。Word、CAD 等格式后面再加。
+
+## 功能
+
+- **嵌进笔记**：用 `rich-view` 代码块。插入一个空块，点 **导入文件** 就行。
+- **支持 draw.io、Visio、PowerPoint**：`.drawio`、`.vsdx`、`.pptx`。
+- **缩放、平移、放大镜**。幻灯片一次一页，始终完整显示。
+- **页面标签**：图表的各页、幻灯片都能切换。
+- **单独标签页打开**：在文件列表里点一下就开，不用写代码块。
+- **能被 Rich Search 搜到**。点结果就跳到对应的页或幻灯片，并标出命中位置。
+- **图形链接**：给 draw.io 图形挂笔记或网址。
+- **固定视图**：把页、缩放、位置存进代码块。
+- **三方图形库**（AWS、Azure、GCP、Cisco 等）按需下载。
+- **全屏**、可调高度、**深色模式**，手机上也能用。
+
+---
+
+## 演示
+
+<!-- 添加演示：将 GIF 按下方各注释中的文件名保存到 docs/，删除“即将推出”一行以及图片行两侧的注释标记。 -->
+
+### 嵌进笔记
+
+插入一个空的 `rich-view` 块，点 **导入文件**，选个文件就完事。
+
+> 🎬 *演示 GIF 即将推出*
+<!-- ![内嵌文件演示](docs/demo-01-embed.gif) -->
+
+### 缩放、平移与固定视图
+
+滚轮缩放，拖动平移，小字用放大镜看。固定一下，视图就存住了。
+
+> 🎬 *演示 GIF 即将推出*
+<!-- ![缩放平移与固定视图演示](docs/demo-02-zoom-pin.gif) -->
+
+### 幻灯片与多页
+
+幻灯片和图表的页面都用标签切换。
+
+> 🎬 *演示 GIF 即将推出*
+<!-- ![幻灯片与多页演示](docs/demo-03-pages.gif) -->
+
+### 标签页打开
+
+在文件列表里点一下文件，就全尺寸打开。
+
+> 🎬 *演示 GIF 即将推出*
+<!-- ![标签页打开演示](docs/demo-04-tab.gif) -->
+
+### 搜图表和幻灯片里的字
+
+在 Rich Search 里搜个词，点结果。文件会打开到对应页、自动放大，命中位置会被标出来。
+
+> 🎬 *演示 GIF 即将推出*
+<!-- ![搜索演示](docs/demo-05-search.gif) -->
+
+### 图形链接与图形库
+
+悬停在图形上点 ✎ 加链接。缺图形库时，一键下载。
+
+> 🎬 *演示 GIF 即将推出*
+<!-- ![图形链接与图形库演示](docs/demo-06-links-libraries.gif) -->
 
 ---
 
 ## 使用方法
 
-将文件放在 vault 任意位置，用围栏 `rich-view` 代码块嵌入。最省事的方式：插入一个**空的** `rich-view` 代码块，点击 **导入文件**，从 vault 里选一个 `.drawio`、`.vsdx` 或 `.pptx`，代码块会自动填好。
+文件放仓库里哪都行，用 `rich-view` 代码块嵌进来。最省事：插入一个**空**块，点 **导入文件**。
 
-也可以手写：
+也可以自己写：
 
 ````markdown
 ```rich-view
@@ -59,7 +140,7 @@ file=my-diagram.drawio
 ```
 ````
 
-其他字段都是显式的 `key=value`，用 `|` 分隔，顺序任意：
+其他参数都是 `key=value`，用 `|` 隔开，顺序随意：
 
 ````markdown
 ```rich-view
@@ -67,110 +148,147 @@ file=my-diagram.drawio|page=my_page|height=600|zoom=80|offset=190,34
 ```
 ````
 
-| 参数 | 格式 | 示例 | 说明 |
-|------|------|------|------|
-| `file` | `key=value` | `file=my-diagram.drawio` | 必填，vault 相对路径或裸文件名（`.drawio`、`.vsdx`、`.pptx`） |
-| `page` | `key=value` | `page=my_page` | 按**精确名称**指定显示哪一页（仅图表），默认第一页 |
-| `page-index` | `key=value` | `page-index=2` | 按 1-based 位置指定页面或幻灯片；同时写了 `page=` 时忽略此项 |
-| `height` | `key=value` | `height=600` | 查看器高度（像素），默认 400 |
-| `zoom` | `key=value` | `zoom=80` | 初始缩放百分比，默认自动适应 |
-| `offset` | `key=value` | `offset=190,34` | 初始平移位置（仅图表），默认居中 |
+| 键 | 示例 | 作用 |
+|----|------|------|
+| `file` | `file=my-diagram.drawio` | 必填。仓库路径或文件名。 |
+| `page` | `page=my_page` | 按页名指定页（图表）。默认第一页。 |
+| `page-index` | `page-index=2` | 按位置指定页或幻灯片，从 1 数。设了 `page=` 就忽略它。 |
+| `height` | `height=600` | 高度，单位像素。默认 400。 |
+| `zoom` | `zoom=80` | 初始缩放（%）。默认自动适配。 |
+| `offset` | `offset=190,34` | 初始平移位置（图表）。默认居中。 |
 
-只有 `file=` 是必填的，其他字段都可以省略。
+---
+
+## 在标签页中打开文件
+
+在文件列表里点 `.drawio`、`.vsdx` 或 `.pptx`，它会在普通标签页里打开，缩放、平移、分页和内嵌时一样。
+
+不想用？在 **设置 → Rich View → File tabs** 里关掉对应格式，比如想让别的插件打开 `.drawio`。改完要重载插件才生效。
+
+---
+
+## 配合 Rich Search 搜索
+
+装上 [Rich Search](https://github.com/SdKay/obsidian-rich-search)，文件里的字就能像笔记一样被搜到：
+
+| 格式 | 搜什么 | 点结果后 |
+|---|---|---|
+| draw.io | 所有页上每个图形的标签 | 跳到该页，标出图形 |
+| Visio | 所有页上每个图形的文字 | 跳到该页，标出图形 |
+| PowerPoint | 每个文本框和表格单元格 | 跳到该幻灯片，标出关键词 |
+
+- 搜索面板开着时，打开的文件里所有命中都会标出来。你点的那条更亮、带边框。颜色用的是你在 Rich Search 里设的。
+- 图表太小看不清时，会自动放大到字和笔记正文差不多大。
+- PowerPoint 能量出文字位置时标关键词本身，量不出就标整个文本框。draw.io 和 Visio 标整个图形。
+- 没装 Rich Search 也行，文件照常打开，只是没有标记。
 
 ---
 
 ## 三方图形库
 
-如果你的图表用了扩展图形库（AWS、Azure、GCP、Cisco、电气符号、IBM 等），插件会自动检测，并在首次打开时顶部弹出**下载横幅**。
+图表用到了额外的图形库（AWS、Azure、GCP、Cisco、IBM 等），第一次打开会弹出一个横幅。点 **Download**，库会从 draw.io 官方仓库下载到本地，以后直接用。
 
-点击 **Download**，缺失的图形库会从 draw.io 官方仓库下载到本地，后续所有图表直接复用，无需再次下载。横幅上还有 **Settings** 快捷入口，方便手动管理。
-
-进入**设置 → Rich View → Shape Libraries** 可以：
-- 按分类浏览并下载官方图形库
-- 点击 **Auto-detect from vault** 扫描 vault 中所有 `.drawio` 文件，一键检测所需图形库
-- 设置**自定义图形库目录**，放入自己的图形文件后自动加载
+**设置 → Rich View → Shape libraries** 里可以：
+- 按类别浏览、下载官方库
+- **Auto-detect from vault**：自动找出你的图表都需要哪些库
+- 设**自定义文件夹**放自己的图形
 
 ---
 
 ## 操作方式
 
-所有格式的查看器内容下方都有同一条**状态栏**：左侧是页签（页数多时可横向滚动），然后是当前缩放比例，右侧是一排图标按钮。通用按钮在前，接一条分割线，之后是该文件类型特有的按钮。
+查看器下方是状态栏：左边是页面标签，然后是缩放比例，右边是一排图标按钮。
 
-| 按钮 | 作用 |
+| 图标（悬停看提示） | 作用 |
 |------|------|
 | 🔍 **放大镜** | 开关放大镜（图表） |
-| **适配** | 按查看器当前尺寸自动适配整页 |
-| 📌 **固定视图** | 把当前页面、缩放、位置写回代码块 |
-| 📂 **切换文件** | 从 vault 里选另一个文件替换当前代码块的文件 |
-| ↗ **外部打开** | 用系统默认程序打开文件 |
-| ⤢ **全屏** | 铺满整个屏幕（Esc 退出） |
-| **拖拽底边** | 调整查看器高度，拖动时手柄变蓝 |
+| **自动适配查看器大小** | 整页适配当前查看器 |
+| 📌 **将当前视图…固定到代码块** | 把页、缩放、位置存进代码块 |
+| 📂 **切换到其他文件** | 让这个代码块指向别的文件 |
+| ↗ **用系统默认程序打开** | 用系统默认应用打开 |
+| ⤢ **全屏** | 铺满屏幕（Esc 退出） |
+| **拖动底边** | 调整高度 |
 
 | 手势 | 图表 | 幻灯片 |
 |------|------|--------|
 | **滚轮** | 缩放（或 Ctrl+滚轮，见设置） | 滚动 |
 | **Ctrl + 滚轮** | 缩放 | 缩放 |
-| **拖拽** | 平移 | —（放大后用滚动条） |
-| **双指捏合** | 捏合缩放（触屏/移动端） | — |
-| **双击** | 重置到初始视图 | — |
+| **拖动** | 平移 | 放大后用滚动条 |
+| **双指捏合** | 缩放（触屏） | — |
+| **双击** | 回到初始视图 | — |
 
-**小技巧：** 调整到想要的视图，点击**固定视图**，代码块自动更新，下次打开即恢复该视图。一旦固定了具体的缩放/偏移，双击就会恢复到*那个固定的视图*而不是重新自动适配——点**适配**才能重新自动适配（比如调整高度之后），满意了再固定。
+**小技巧：** 调到想要的视图，点图钉图标。代码块会自动更新，以后每次打开笔记都是这个视图。固定之后双击会回到固定的视图；想重新自动适配，点“自动适配查看器大小”，再固定一次。
 
-### 幻灯片（.pptx）
+### 幻灯片
 
-PowerPoint 文件一次显示一页，带数字页签。幻灯片始终完整适配查看器——把高度拖矮它会重新适配，不会被裁掉。Ctrl+滚轮放大后，用滚动条移动。不播放动画和切换效果。
+一次一页，用编号标签切换。幻灯片始终完整显示，高度缩小它会重新适配。Ctrl+滚轮放大，再用滚动条移动。没有动画和切换效果。
 
 ### 图形链接
 
-将鼠标悬停在任意图形上，出现 **✎** 按钮。点击可以为图形添加或修改链接（vault 笔记或外部 URL）。点击图形本身可跳转链接（具体按键取决于「点击行为」设置）。
+悬停在 draw.io 图形上点 **✎**，可以链接到笔记或网址。点图形就跳转（用哪种点击看 **Click behavior**）。
 
 ### 放大镜
 
-点击 **🔍** 可以在不改变当前缩放/平移的情况下查看细节。一个圆形放大镜会跟随鼠标，放大倍数固定；**+ / -** 调整放大镜范围大小。滚轮仍然正常缩放主视图。按 **Esc** 或点击其他任意位置退出。
+点 🔍，一个放大镜会跟着光标走。**+ / -** 调大小，滚轮照常缩放。按 **Esc** 或点别处退出。
 
 ---
 
 ## 深色模式
 
-Obsidian 切换深色主题时，查看器自动适配，无需任何配置。
+跟着 Obsidian 主题走，不用设置。
 
 ---
 
 ## 设置项
 
-| 设置 | 说明 |
+| 设置 | 作用 |
 |------|------|
-| **缩放修饰键** | 普通滚轮或 Ctrl+滚轮缩放 |
-| **点击行为** | 单击还是 Ctrl+单击跟随图形链接 |
-| **自定义图形库目录** | 存放自定义图形文件的 vault 目录 |
-| **Shape Libraries** | 下载官方图形库，支持从 vault 自动检测 |
+| **Zoom modifier key** | 滚轮直接缩放，还是 Ctrl+滚轮缩放。 |
+| **Click behavior** | 直接点击还是 Ctrl+点击来跳转图形链接。 |
+| **File tabs** | 按格式设置是否用 Rich View 标签页打开文件。改完重载插件生效。 |
+| **Custom library folder** | 放你自己图形的仓库文件夹。 |
+| **Shape libraries** | 下载官方库，或从仓库自动检测。 |
+
+设置页目前只有英文。
 
 ---
 
 ## 安装
 
-### 社区插件市场（推荐）
+**社区插件市场（推荐）：** 设置 → 第三方插件 → 浏览 → 搜 **Rich View** → 安装 → 启用。
 
-1. **设置 → 社区插件 → 浏览**
-2. 搜索 **Rich View** → 安装 → 启用
+**手动：** 从[最新发布](https://github.com/SdKay/obsidian-rich-view/releases/latest)下载 `main.js`、`manifest.json`、`styles.css`，放到 `<仓库>/.obsidian/plugins/rich-view/`。
 
-### 手动安装
-
-从[最新 Release](https://github.com/SdKay/obsidian-rich-view/releases/latest) 下载 `main.js`、`manifest.json`、`styles.css`，复制到 `<vault>/.obsidian/plugins/rich-view/`。
+需要 Obsidian 1.8.7 或更高版本。
 
 ---
 
 ## 已知限制
 
-- draw.io 的部分表格或特殊图形可能无法完整渲染。
-- `.pptx`：不播放动画和切换效果；SmartArt、图表、内嵌字体尽力渲染；不支持旧版 `.ppt`。
-- 不支持 `![[file.drawio]]` 嵌入语法，请使用代码块方式。
-- 在实时预览模式下退出代码块编辑器时，页面可能轻微上移（正在调查中）。
+- draw.io 的表格和扩展图形集里，有些图形渲染得不完美。
+- Visio：箭头统一画成一种三角形；填充和线型是近似的；椭圆弧会画成直线；不读图形上的超链接；没有轮廓的文本框不会画出来（所以也搜不到）。不支持旧版 `.vsd`。
+- Visio 里指定的字体，你电脑上装了才会用，没装就用系统字体。
+- PowerPoint：没有动画和切换效果；SmartArt、图表、内嵌字体只能尽力渲染；不支持旧版 `.ppt`。
+- 不支持 `![[file.drawio]]` 这种嵌入写法，请用代码块。
+- 实时预览里退出代码块编辑时，页面可能会轻微跳一下。
 
 ---
 
-## Star 历史
+## 开发
+
+```bash
+npm install
+npm run dev     # 监听构建
+npm test        # 单元测试
+npm run lint
+npm run build   # 类型检查 + 生产构建
+```
+
+先看 [CLAUDE.md](CLAUDE.md)：架构、测试怎么写、怎么发版。
+
+---
+
+## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=SdKay/obsidian-rich-view&type=Date)](https://star-history.com/#SdKay/obsidian-rich-view&Date)
 
@@ -179,3 +297,26 @@ Obsidian 切换深色主题时，查看器自动适配，无需任何配置。
 ## 许可证
 
 [MIT](LICENSE) © 2026 [sdking.xing](https://github.com/SdKay)
+
+---
+
+## 支持项目
+
+Rich View 免费开源。如果它帮你省了时间，欢迎捐赠，让它继续更新。
+
+### 💳 PayPal
+[![Donate via PayPal](https://img.shields.io/badge/Donate-PayPal-003087?style=flat-square&logo=paypal&logoColor=white)](https://paypal.me/ssdking)
+
+### 🧧 微信支付 / 支付宝
+
+| 微信支付 | 支付宝 |
+|:---:|:---:|
+| <img src="docs/wechat-donate.jpg" width="120" alt="微信支付捐赠二维码" /> | <img src="alipay.jpg" width="120" alt="支付宝捐赠二维码" /> |
+
+谢谢！🙏
+
+---
+
+## 反馈
+
+问题和建议：[GitHub Issues](https://github.com/SdKay/obsidian-rich-view/issues)
