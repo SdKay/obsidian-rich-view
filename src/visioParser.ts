@@ -1,3 +1,4 @@
+import { arrowExtent, arrowheadPath, shortenPolyline } from './visioArrow';
 import { roundPolyline } from './visioRounding';
 import { placeText, readTextLayout, type HAlign, type VAlign } from './visioTextBox';
 import { unzipSync } from 'fflate';
@@ -252,6 +253,13 @@ function optionalBoolCell(el: Element, name: string): boolean | undefined {
 	if (v === undefined || v === null || v === '') return undefined;
 	const n = parseFloat(v);
 	return isNaN(n) ? undefined : n === 1;
+}
+
+function optionalNumCell(el: Element, name: string): number | undefined {
+	const v = directCellEl(el, name)?.getAttribute('V');
+	if (v === undefined || v === null || v === '') return undefined;
+	const n = parseFloat(v);
+	return isNaN(n) ? undefined : n;
 }
 
 function strCell(el: Element, name: string, fallback: string): string {
@@ -565,27 +573,6 @@ export function buildPath(
 	return { subpaths, points };
 }
 
-/**
- * A small fixed-size filled triangle, tip at `to`, pointing along the
- * `from`→`to` direction — used for Begin/EndArrow markers. Visio's arrow
- * cells select from a large numbered catalog of styles/sizes; this renders
- * every non-zero style as the same generic triangle rather than matching
- * the exact catalog entry, consistent with this module's "approximate
- * rather than block" approach elsewhere (EllipticalArcTo, master fallback).
- */
-export function arrowheadPath(from: { x: number; y: number }, to: { x: number; y: number }): string {
-	const ARROW_LEN = 9, ARROW_HALF_WIDTH = 3.5;
-	const dx = to.x - from.x, dy = to.y - from.y;
-	const len = Math.sqrt(dx * dx + dy * dy);
-	if (len < 1e-6) return '';
-	const ux = dx / len, uy = dy / len;
-	const px = -uy, py = ux;
-	const baseX = to.x - ux * ARROW_LEN, baseY = to.y - uy * ARROW_LEN;
-	const leftX = baseX + px * ARROW_HALF_WIDTH, leftY = baseY + py * ARROW_HALF_WIDTH;
-	const rightX = baseX - px * ARROW_HALF_WIDTH, rightY = baseY - py * ARROW_HALF_WIDTH;
-	return `M ${to.x} ${to.y} L ${leftX} ${leftY} L ${rightX} ${rightY} Z`;
-}
-
 // ---------------------------------------------------------------------------
 // Shape tree walk
 // ---------------------------------------------------------------------------
@@ -632,17 +619,31 @@ function collectShapes(
 				stroke: sp.strokeOn && linePatternOn ? strokeColor : '',
 			}));
 
-			// Arrowhead markers: filled in the line color, independent of the
-			// shape's own fill (a connector's body has no fill at all, but its
-			// arrowhead is always a solid triangle).
+			// Arrowhead markers: filled in the line color, independent of the shape's own fill (a connector's body
+			// has no fill at all, but its arrowhead is always a solid triangle). Sized from the line weight and the
+			// arrow size cell, as Visio does, and the line stops where the head begins.
 			if (points.length >= 2) {
-				if (numCell(shapeEl, 'BeginArrow', 0) !== 0) {
-					const d = arrowheadPath(points[1]!, points[0]!);
+				const lineWeightPx = numCell(shapeEl, 'LineWeight', 0.01) * PX_PER_INCH;
+				const beginHead = numCell(shapeEl, 'BeginArrow', 0) !== 0;
+				const endHead = numCell(shapeEl, 'EndArrow', 0) !== 0;
+				const beginSize = optionalNumCell(shapeEl, 'BeginArrowSize');
+				const endSize = optionalNumCell(shapeEl, 'EndArrowSize');
+				if (beginHead) {
+					const d = arrowheadPath(points[1]!, points[0]!, lineWeightPx, beginSize);
 					if (d) subpaths.push({ d, fill: strokeColor, stroke: '' });
 				}
-				if (numCell(shapeEl, 'EndArrow', 0) !== 0) {
-					const d = arrowheadPath(points[points.length - 2]!, points[points.length - 1]!);
+				if (endHead) {
+					const d = arrowheadPath(points[points.length - 2]!, points[points.length - 1]!, lineWeightPx, endSize);
 					if (d) subpaths.push({ d, fill: strokeColor, stroke: '' });
+				}
+				const body = subpaths[0];
+				if ((beginHead || endHead) && rawSubpaths.length === 1 && body && /^[ML\d\s.eE+-]+$/.test(body.d)) {
+					const cut = shortenPolyline(
+						points,
+						beginHead ? 2 * arrowExtent(lineWeightPx, beginSize) : 0,
+						endHead ? 2 * arrowExtent(lineWeightPx, endSize) : 0,
+					);
+					body.d = cut.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
 				}
 			}
 

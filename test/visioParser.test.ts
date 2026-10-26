@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { zipSync } from 'fflate';
 import {
 	apply,
-	arrowheadPath,
 	buildPath,
 	extractGeometry,
 	mergeGeometry,
@@ -196,22 +195,6 @@ describe('buildPath — open vs. closed subpaths', () => {
 	});
 });
 
-describe('arrowheadPath', () => {
-	it('places the tip exactly at `to`, base set back along the from→to direction', () => {
-		const d = arrowheadPath({ x: 0, y: 0 }, { x: 10, y: 0 });
-		const nums = d.match(/-?\d+(\.\d+)?/g)!.map(Number);
-		expect(nums.slice(0, 2)).toEqual([10, 0]); // tip
-		// Base corners are symmetric across the (horizontal) direction line.
-		const [, , x1, y1, x2, y2] = nums;
-		expect(x1).toBeCloseTo(x2!, 5);
-		expect(y1).toBeCloseTo(-y2!, 5);
-	});
-
-	it('returns empty for a zero-length direction rather than a degenerate path', () => {
-		expect(arrowheadPath({ x: 5, y: 5 }, { x: 5, y: 5 })).toBe('');
-	});
-});
-
 describe('shapeLocalMatrix + apply — Pin/LocPin/Angle/Flip transform', () => {
 	it('places the LocPin exactly at PinX/PinY with no rotation/flip', () => {
 		const m = shapeLocalMatrix({ width: 10, height: 10, locPinX: 5, locPinY: 5, angle: 0, flipX: false, flipY: false, pinX: 100, pinY: 200 });
@@ -300,6 +283,145 @@ function buildFixtureVsdx(): ArrayBuffer {
 	const zipped = zipSync(files);
 	return zipped.buffer.slice(zipped.byteOffset, zipped.byteOffset + zipped.byteLength) as ArrayBuffer;
 }
+
+/** One page, one horizontal 2-inch line from (1,1) to (3,1) with the given line cells. */
+function buildArrowVsdx(cells: string, geometryRows?: string): ArrayBuffer {
+	const rels = (relationships: { id: string; type: string; target: string }[]) =>
+		`<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${
+			relationships.map(r => `<Relationship Id="${r.id}" Type="${r.type}" Target="${r.target}"/>`).join('')
+		}</Relationships>`;
+	const files: Record<string, Uint8Array> = {
+		'_rels/.rels': utf8(rels([{ id: 'rId1', type: 'http://schemas.microsoft.com/visio/2010/relationships/document', target: 'visio/document.xml' }])),
+		'visio/document.xml': utf8('<VisioDocument/>'),
+		'visio/_rels/document.xml.rels': utf8(rels([{ id: 'rId1', type: 'http://schemas.microsoft.com/visio/2010/relationships/pages', target: 'pages/pages.xml' }])),
+		'visio/pages/pages.xml': utf8(
+			`<Pages xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><Page ID='0' Name='P'>` +
+			`<PageSheet><Cell N='PageWidth' V='10'/><Cell N='PageHeight' V='8'/></PageSheet><Rel r:id='rId1'/></Page></Pages>`,
+		),
+		'visio/pages/_rels/pages.xml.rels': utf8(rels([{ id: 'rId1', type: 'http://schemas.microsoft.com/visio/2010/relationships/page', target: 'page1.xml' }])),
+		'visio/pages/page1.xml': utf8(
+			`<PageContents><Shapes><Shape ID='1'>` +
+			`<Cell N='PinX' V='2'/><Cell N='PinY' V='1'/><Cell N='Width' V='2'/><Cell N='Height' V='0'/>` +
+			`<Cell N='LocPinX' V='1'/><Cell N='LocPinY' V='0'/>${cells}` +
+			`<Section N='Geometry' IX='0'>${geometryRows ?? `<Row T='MoveTo' IX='1'><Cell N='X' V='0'/><Cell N='Y' V='0'/></Row>` +
+			`<Row T='LineTo' IX='2'><Cell N='X' V='2'/><Cell N='Y' V='0'/></Row>`}</Section></Shape></Shapes></PageContents>`,
+		),
+	};
+	const zipped = zipSync(files);
+	return zipped.buffer.slice(zipped.byteOffset, zipped.byteOffset + zipped.byteLength) as ArrayBuffer;
+}
+
+/** Width and length of the head drawn at a line's end, from the last sub-path (the head), in px. */
+function headSize(cells: string): { length: number; width: number; count: number } {
+	const shape = parseVisioFile(buildArrowVsdx(cells)).pages[0]!.shapes[0]!;
+	const head = shape.subpaths[shape.subpaths.length - 1]!.d;
+	const n = (head.match(/-?\d+(\.\d+)?/g) ?? []).map(Number);
+	return { length: Math.abs(n[0]! - n[2]!), width: Math.abs(n[3]! - n[5]!), count: shape.subpaths.length };
+}
+
+describe('arrowheads follow the line weight and the size cell', () => {
+	// Regression: a connector between two large boxes (0.04 in = 3 pt line, arrow size 1) had a head of a fixed
+	// 9 x 7 px, which a 4 px line almost hid. Visio draws it 12.8 px long and 12.8 px wide.
+	it('draws the head of a 3 pt line at size 1 as Visio does: 12.8 px long, 12.8 px wide', () => {
+		const h = headSize(`<Cell N='LineWeight' V='${3 / 72}'/><Cell N='EndArrow' V='4'/><Cell N='EndArrowSize' V='1'/>`);
+		expect(h.count).toBe(2);
+		expect(h.length).toBeCloseTo(12.8, 1);
+		expect(h.width).toBeCloseTo(12.8, 1);
+	});
+	it('draws the head of a 0.75 pt line at size 1 smaller: 6.8 px long', () => {
+		const h = headSize(`<Cell N='LineWeight' V='${0.75 / 72}'/><Cell N='EndArrow' V='4'/><Cell N='EndArrowSize' V='1'/>`);
+		expect(h.length).toBeCloseTo(6.8, 1);
+	});
+	it('draws a bigger head for a bigger size cell on the same line', () => {
+		const small = headSize(`<Cell N='LineWeight' V='${1 / 72}'/><Cell N='EndArrow' V='4'/><Cell N='EndArrowSize' V='1'/>`);
+		const big = headSize(`<Cell N='LineWeight' V='${1 / 72}'/><Cell N='EndArrow' V='4'/><Cell N='EndArrowSize' V='3'/>`);
+		expect(big.length).toBeGreaterThan(small.length);
+	});
+	it('uses Visio\'s default size when the size cell is absent', () => {
+		const absent = headSize(`<Cell N='LineWeight' V='${1 / 72}'/><Cell N='EndArrow' V='4'/>`);
+		const two = headSize(`<Cell N='LineWeight' V='${1 / 72}'/><Cell N='EndArrow' V='4'/><Cell N='EndArrowSize' V='2'/>`);
+		expect(absent.length).toBeCloseTo(two.length, 6);
+	});
+	it('reads BeginArrowSize for the start of the line, not EndArrowSize', () => {
+		const shape = parseVisioFile(buildArrowVsdx(
+			`<Cell N='LineWeight' V='${1 / 72}'/><Cell N='BeginArrow' V='4'/><Cell N='BeginArrowSize' V='3'/><Cell N='EndArrowSize' V='0'/>`,
+		)).pages[0]!.shapes[0]!;
+		const head = shape.subpaths[shape.subpaths.length - 1]!.d;
+		const n = (head.match(/-?\d+(\.\d+)?/g) ?? []).map(Number);
+		// 1 pt line, size 3: half-width 1 + 3.24 pt, twice that long, converted to px.
+		expect(Math.abs(n[0]! - n[2]!)).toBeCloseTo(2 * (1 + 3.24) * 96 / 72, 1);
+	});
+	it('draws no head when the arrow cell is 0', () => {
+		expect(headSize(`<Cell N='LineWeight' V='${3 / 72}'/><Cell N='EndArrow' V='0'/>`).count).toBe(1);
+	});
+});
+
+describe('a line stops where its arrowhead begins', () => {
+	// Regression: a 4 px line drawn all the way to the tip of its 12.8 px head leaves the square end of the line
+	// sticking out on both sides of the tip. Visio ends the line where the head starts.
+	const lineEnds = (cells: string) => {
+		const shape = parseVisioFile(buildArrowVsdx(cells)).pages[0]!.shapes[0]!;
+		const n = (shape.subpaths[0]!.d.match(/-?\d+(\.\d+)?/g) ?? []).map(Number);
+		return { x1: n[0]!, x2: n[n.length - 2]! };
+	};
+	const plain = lineEnds(`<Cell N='LineWeight' V='${3 / 72}'/>`);
+
+	it('leaves a line without arrowheads at full length', () => {
+		expect(plain.x2 - plain.x1).toBeCloseTo(2 * 96, 2);
+	});
+	it('shortens the end by the length of the head it carries (12.8 px for a 3 pt line at size 1)', () => {
+		const e = lineEnds(`<Cell N='LineWeight' V='${3 / 72}'/><Cell N='EndArrow' V='4'/><Cell N='EndArrowSize' V='1'/>`);
+		expect(e.x1).toBeCloseTo(plain.x1, 2);
+		expect(plain.x2 - e.x2).toBeCloseTo(12.8, 1);
+	});
+	it('shortens the start by the start head, and only the start', () => {
+		const e = lineEnds(`<Cell N='LineWeight' V='${3 / 72}'/><Cell N='BeginArrow' V='4'/><Cell N='BeginArrowSize' V='1'/>`);
+		expect(e.x1 - plain.x1).toBeCloseTo(12.8, 1);
+		expect(e.x2).toBeCloseTo(plain.x2, 2);
+	});
+	it('shortens both ends of a line with a head at each end', () => {
+		const e = lineEnds(`<Cell N='LineWeight' V='${3 / 72}'/><Cell N='BeginArrow' V='4'/><Cell N='EndArrow' V='4'/><Cell N='BeginArrowSize' V='1'/><Cell N='EndArrowSize' V='1'/>`);
+		expect(e.x1 - plain.x1).toBeCloseTo(12.8, 1);
+		expect(plain.x2 - e.x2).toBeCloseTo(12.8, 1);
+	});
+	it('keeps the tip of the head at the original end point', () => {
+		const shape = parseVisioFile(buildArrowVsdx(`<Cell N='LineWeight' V='${3 / 72}'/><Cell N='EndArrow' V='4'/><Cell N='EndArrowSize' V='1'/>`)).pages[0]!.shapes[0]!;
+		const tip = (shape.subpaths[1]!.d.match(/-?\d+(\.\d+)?/g) ?? []).map(Number);
+		expect(tip[0]).toBeCloseTo(plain.x2, 2);
+	});
+	it('leaves a bent line with rounded corners alone, since its ends may be curves', () => {
+		const bent = `<Row T='MoveTo' IX='1'><Cell N='X' V='0'/><Cell N='Y' V='0'/></Row>` +
+			`<Row T='LineTo' IX='2'><Cell N='X' V='1'/><Cell N='Y' V='0'/></Row>` +
+			`<Row T='LineTo' IX='3'><Cell N='X' V='1'/><Cell N='Y' V='1'/></Row>`;
+		const body = (cells: string) => parseVisioFile(buildArrowVsdx(cells, bent)).pages[0]!.shapes[0]!.subpaths[0]!.d;
+		const without = body(`<Cell N='Rounding' V='0.1'/><Cell N='LineWeight' V='${3 / 72}'/>`);
+		expect(without).toContain(' C ');                                   // the premise: this line really has a curve
+		expect(body(`<Cell N='Rounding' V='0.1'/><Cell N='LineWeight' V='${3 / 72}'/><Cell N='EndArrow' V='4'/><Cell N='EndArrowSize' V='1'/>`)).toBe(without);
+	});
+	it('does cut a bent line with sharp corners at its end', () => {
+		const bent = `<Row T='MoveTo' IX='1'><Cell N='X' V='0'/><Cell N='Y' V='0'/></Row>` +
+			`<Row T='LineTo' IX='2'><Cell N='X' V='1'/><Cell N='Y' V='0'/></Row>` +
+			`<Row T='LineTo' IX='3'><Cell N='X' V='1'/><Cell N='Y' V='1'/></Row>`;
+		const body = (cells: string) => parseVisioFile(buildArrowVsdx(cells, bent)).pages[0]!.shapes[0]!.subpaths[0]!.d;
+		expect(body(`<Cell N='LineWeight' V='${3 / 72}'/><Cell N='EndArrow' V='4'/><Cell N='EndArrowSize' V='1'/>`))
+			.not.toBe(body(`<Cell N='LineWeight' V='${3 / 72}'/>`));
+	});
+	it('leaves a shape with several geometry sections alone, since its points belong to different paths', () => {
+		const twoSections =
+			`<Row T='MoveTo' IX='1'><Cell N='X' V='0'/><Cell N='Y' V='0'/></Row><Row T='LineTo' IX='2'><Cell N='X' V='2'/><Cell N='Y' V='0'/></Row></Section>` +
+			`<Section N='Geometry' IX='1'><Row T='MoveTo' IX='1'><Cell N='X' V='0'/><Cell N='Y' V='1'/></Row><Row T='LineTo' IX='2'><Cell N='X' V='2'/><Cell N='Y' V='1'/></Row>`;
+		const paths = (cells: string) => parseVisioFile(buildArrowVsdx(cells, twoSections)).pages[0]!.shapes[0]!.subpaths.map(p => p.d);
+		const without = paths(`<Cell N='LineWeight' V='${3 / 72}'/>`);
+		expect(without).toHaveLength(2);                                    // the premise: two separate paths
+		const withHead = paths(`<Cell N='LineWeight' V='${3 / 72}'/><Cell N='EndArrow' V='4'/><Cell N='EndArrowSize' V='1'/>`);
+		expect(withHead.slice(0, 2)).toEqual(without);
+	});
+	it('never shortens a line past its other end when the line is shorter than the head', () => {
+		const shape = parseVisioFile(buildArrowVsdx(`<Cell N='Width' V='${6 / 96}'/><Cell N='LineWeight' V='${3 / 72}'/><Cell N='EndArrow' V='4'/><Cell N='EndArrowSize' V='1'/>`)).pages[0]!.shapes[0]!;
+		const n = (shape.subpaths[0]!.d.match(/-?\d+(\.\d+)?/g) ?? []).map(Number);
+		expect(n.every(Number.isFinite)).toBe(true);
+	});
+});
 
 describe('parseVisioFile — end-to-end OPC resolution + master fallback', () => {
 	it('resolves pages/masters through the .rels chain (not by guessing filenames) and merges master geometry', () => {
