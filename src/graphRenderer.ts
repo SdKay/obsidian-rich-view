@@ -1,6 +1,7 @@
 import { Graph, ModelXmlSerializer, InternalEvent, type ShapeValue, type Cell } from '@maxgraph/core';
 import { registerBuiltinShapes } from './builtinShapes';
 import type { BoundingBox, DrawingRenderer, ShapeHit } from './drawingRenderer';
+import { screenRectToGraph, unionBounds, type Rect } from './unionBounds';
 
 /** draw.io draws a label at 12px when a cell sets no `fontSize`. */
 const DRAWIO_DEFAULT_FONT_SIZE = 12;
@@ -128,6 +129,33 @@ export class GraphRenderer implements DrawingRenderer {
 	}
 
 	/**
+	 * What the diagram really covers: every shape and line, plus the text as it is drawn. maxGraph's own bounds
+	 * (`loaded`) count a label placed outside its shape as a box as big as the shape, which adds a screenful of
+	 * empty space; the text itself is measured from the DOM instead. Falls back to `loaded` when nothing can be
+	 * measured (the container has no layout yet).
+	 */
+	private contentBounds(loaded: BoundingBox): BoundingBox {
+		const view = this.graph.getView();
+		const container = this.graph.container;
+		const rects: Rect[] = [];
+		for (const state of view.getStates().values()) {
+			const box = state.shape?.boundingBox;
+			if (box) rects.push({ x: box.x, y: box.y, width: box.width, height: box.height });
+		}
+		const origin = container.getBoundingClientRect();
+		const transform = { originX: origin.left, originY: origin.top, scale: view.scale, translateX: view.translate.x, translateY: view.translate.y };
+		for (const label of Array.from(container.querySelectorAll<HTMLElement>('foreignObject div, text'))) {
+			if (label.children.length > 0 && label.tagName.toLowerCase() === 'div') continue;
+			if ((label.textContent ?? '').trim() === '') continue;
+			const r = label.getBoundingClientRect();
+			if (r.width <= 0 || r.height <= 0) continue;
+			rects.push(screenRectToGraph({ x: r.left, y: r.top, width: r.width, height: r.height }, transform));
+		}
+		const union = unionBounds(rects);
+		return union ?? loaded;
+	}
+
+	/**
 	 * Run `fn` with the graph container temporarily detached from the DOM, so
 	 * the hundreds of SVG attribute mutations @maxgraph makes during a redraw
 	 * happen off-tree and are invisible to other plugins' MutationObservers.
@@ -152,7 +180,8 @@ export class GraphRenderer implements DrawingRenderer {
 	 * Centre the diagram in cw×ch at a fixed zoom level (no scaling to fit).
 	 * Used when the user specifies a zoom % but no explicit pan offset.
 	 */
-	centerAtZoom(zoomPct: number, cw: number, ch: number, bbox: BoundingBox): void {
+	centerAtZoom(zoomPct: number, cw: number, ch: number, loaded: BoundingBox): void {
+		const bbox = this.contentBounds(loaded);
 		const scale = zoomPct / 100;
 		const tx = cw / (2 * scale) - (bbox.x + bbox.width / 2);
 		const ty = ch / (2 * scale) - (bbox.y + bbox.height / 2);
@@ -162,7 +191,8 @@ export class GraphRenderer implements DrawingRenderer {
 	}
 
 	/** Auto-fit the diagram to fill cw×ch pixels, centred with 20 px padding. */
-	autoFit(cw: number, ch: number, bbox: BoundingBox): void {
+	autoFit(cw: number, ch: number, loaded: BoundingBox): void {
+		const bbox = this.contentBounds(loaded);
 		if (bbox.width <= 0 || bbox.height <= 0) return;
 		const pad = 20;
 		const scale = Math.min(
