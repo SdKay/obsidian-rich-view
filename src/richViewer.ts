@@ -1,5 +1,7 @@
 import { App, Component, Notice, TFile } from 'obsidian';
 import { blockHeight, formatCodeBlock } from './codeBlockText';
+import { buildVisioClipboard } from './copyVisioObject';
+import { writeClipboardFormat } from './nodeBridge';
 import { isFullscreen } from './frame/fullscreen';
 import { t } from './i18n';
 import type { ViewOptions } from './viewParams';
@@ -121,6 +123,19 @@ export abstract class RichViewer extends Component {
 			fullscreen: isFullscreen(this.container),
 			configured: this.options.height,
 		});
+	}
+
+	/** Put one page of a Visio file on the clipboard as an embeddable object, as copying in Visio does. Desktop only. */
+	protected copyAsVisioObject(vsdx: Uint8Array, pageIndex: number): void {
+		const clip = buildVisioClipboard(vsdx, pageIndex);
+		if (!clip) { new Notice(t('copyFailed')); return; }
+		try {
+			writeClipboardFormat(clip.format, clip.data);
+			new Notice(t('copiedVisioObject'));
+		} catch (err) {
+			console.error('RichViewer copy Visio object:', err);
+			new Notice(t('copyFailed'));
+		}
 	}
 
 	/** Put a `rich-view` code block for `params` on the clipboard; works in a note and in a file tab alike. */

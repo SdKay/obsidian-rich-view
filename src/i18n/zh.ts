@@ -5,6 +5,8 @@ export const zh: Dictionary = {
 	autoFit: '自动适配查看器大小',
 	applyView: '将当前视图（页面、缩放、位置）固定到代码块',
 	copyAsCodeBlock: '复制为代码块（当前页面、缩放、位置）',
+	copyAsVisioObject: '复制为 Visio 对象（可粘贴到 PowerPoint 或 Word）',
+	copiedVisioObject: '已将当前页复制为 Visio 对象',
 	copiedCodeBlock: '已复制 rich-view 代码块',
 	copyFailed: '无法复制到剪贴板',
 	editLink: '编辑链接',

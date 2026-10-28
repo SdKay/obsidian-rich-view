@@ -1,3 +1,5 @@
+import { Platform } from 'obsidian';
+import { canCopyVisioObject } from './copyVisioObject';
 import { StencilLibs } from './stencilLibs';
 import { parseDrawioCached, type DrawioPage } from './drawioParser';
 import { parseVisioFile, type VisioPage } from './visioParser';
@@ -29,6 +31,8 @@ export class DrawingViewer extends RichViewer {
 	private pages: AnyPage[] = [];
 	/** Set from renderContent(): true for a .vsdx page tree, false for .drawio. */
 	private isVisio = false;
+	/** The .vsdx as read, kept so one page can be copied out as a Visio object. */
+	private visioBytes: Uint8Array | null = null;
 	private currentPage = 0;
 	private currentBbox: BoundingBox = { x: 0, y: 0, width: 400, height: 300 };
 
@@ -105,6 +109,7 @@ export class DrawingViewer extends RichViewer {
 		this.graphEl = this.panEl = null;
 
 		this.isVisio = typeof content !== 'string';
+		this.visioBytes = typeof content === 'string' ? null : new Uint8Array(content);
 
 		if (this.isVisio) {
 			const visio = parseVisioFile(content as ArrayBuffer);
@@ -181,6 +186,10 @@ export class DrawingViewer extends RichViewer {
 			'copy-block': () => { this.copyAsCodeBlock(this.buildParamString(this.heightForCopy())); },
 			'open-external': () => { this.openExternal(); },
 		};
+		const visio = this.visioBytes;
+		if (visio && canCopyVisioObject({ isDesktop: Platform.isDesktop, isVisio: this.isVisio, hasBytes: true })) {
+			common['copy-visio'] = () => { this.copyAsVisioObject(visio, this.currentPage); };
+		}
 		const writeParams = this.writeParams;
 		if (writeParams) {
 			common['apply-view'] = () => {

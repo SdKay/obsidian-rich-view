@@ -15,6 +15,7 @@ export const COMMON_ACTIONS: readonly CommonActionSpec[] = [
 	{ id: 'fit', icon: 'scaling', labelKey: 'autoFit' },
 	{ id: 'apply-view', icon: 'pin', labelKey: 'applyView' },
 	{ id: 'copy-block', icon: 'clipboard-copy', labelKey: 'copyAsCodeBlock' },
+	{ id: 'copy-visio', icon: 'copy', labelKey: 'copyAsVisioObject' },
 	{ id: 'switch-file', icon: 'folder-open', labelKey: 'switchFile' },
 	{ id: 'open-external', icon: 'external-link', labelKey: 'openExternal' },
 	{ id: 'fullscreen', icon: 'maximize', labelKey: 'fullscreen' },

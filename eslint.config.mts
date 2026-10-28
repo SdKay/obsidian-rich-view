@@ -31,4 +31,9 @@ export default defineConfig(
 		},
 	},
 	...obsidianmd.configs.recommended,
+	{
+		// The Electron bridge is the one file that calls the desktop runtime's synchronous require().
+		files: ['src/nodeBridge.ts'],
+		languageOptions: { globals: { require: 'readonly' } },
+	},
 );
