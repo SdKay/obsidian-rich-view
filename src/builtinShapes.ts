@@ -1,5 +1,6 @@
 import { ActorShape, ShapeRegistry, Point } from '@maxgraph/core';
 import type { AbstractCanvas2D } from '@maxgraph/core';
+import { diagRoundRectPath, ribbonSimplePath, type PathOp } from './builtinShapePaths';
 
 /**
  * draw.io ships a set of shapes implemented in JavaScript (Shapes.js), not as
@@ -101,6 +102,30 @@ class BasicPolygonShape extends ActorShape {
 	}
 }
 
+/** Draw a list of steps on the canvas. */
+function paint(c: AbstractCanvas2D, ops: PathOp[]): void {
+	for (const o of ops) {
+		if (o.op === 'move') c.moveTo(o.x, o.y);
+		else if (o.op === 'line') c.lineTo(o.x, o.y);
+		else if (o.op === 'arc') c.arcTo(o.rx, o.ry, 0, false, o.sweep, o.x, o.y);
+		else c.close();
+	}
+}
+
+/** `shape=mxgraph.infographic.ribbonSimple` — a bar with a notched left end and a pointed right end. */
+class InfographicRibbonSimpleShape extends ActorShape {
+	redrawPath(c: AbstractCanvas2D, _x: number, _y: number, w: number, h: number): void {
+		paint(c, ribbonSimplePath(w, h, styleNum(this, 'notch1', 20), styleNum(this, 'notch2', 20)));
+	}
+}
+
+/** `shape=mxgraph.basic.diag_round_rect` — a rectangle with two opposite corners rounded. */
+class BasicDiagRoundRectShape extends ActorShape {
+	redrawPath(c: AbstractCanvas2D, _x: number, _y: number, w: number, h: number): void {
+		paint(c, diagRoundRectPath(w, h, styleNum(this, 'dx', 0.5)));
+	}
+}
+
 /** Register all ported draw.io built-in shapes. Idempotent. */
 export function registerBuiltinShapes(): void {
 	if (!ShapeRegistry.get('curlyBracket')) {
@@ -108,5 +133,11 @@ export function registerBuiltinShapes(): void {
 	}
 	if (!ShapeRegistry.get('mxgraph.basic.polygon')) {
 		ShapeRegistry.add('mxgraph.basic.polygon', BasicPolygonShape);
+	}
+	if (!ShapeRegistry.get('mxgraph.infographic.ribbonSimple')) {
+		ShapeRegistry.add('mxgraph.infographic.ribbonSimple', InfographicRibbonSimpleShape);
+	}
+	if (!ShapeRegistry.get('mxgraph.basic.diag_round_rect')) {
+		ShapeRegistry.add('mxgraph.basic.diag_round_rect', BasicDiagRoundRectShape);
 	}
 }
