@@ -155,7 +155,7 @@ export class SlideViewer extends RichViewer {
 		this.keywordMarks = [];
 
 		const host = findSearchHost(this.app);
-		const { query, hit } = readLiveSearch(host, this.clickedQuery);
+		const { query, hit } = readLiveSearch(host, this.clickedQuery, this.sourcePath);
 		const units = slideUnits(this.textIndex, this.current);
 		const chosen = chooseMarks(host, units, query, hit, this.options.filename);
 		const byUnit = new Map(units.map(u => [u, u.entry]));

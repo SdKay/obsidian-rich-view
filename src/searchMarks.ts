@@ -12,6 +12,8 @@ export interface SearchMarksHost {
 	units(): MarkableUnit[];
 	/** Vault path of the file shown, to tell whether an opened hit belongs here. */
 	filePath(): string;
+	/** Path the search scope is asked about: the file itself in a tab, the note in a code block. */
+	scopePath(): string;
 }
 
 /**
@@ -59,7 +61,7 @@ export class SearchMarks extends Component {
 		if (!renderer) return;
 
 		const searchHost = findSearchHost(this.app);
-		const { query, hit } = readLiveSearch(searchHost, this.clickedQuery);
+		const { query, hit } = readLiveSearch(searchHost, this.clickedQuery, this.host.scopePath());
 		const marks = chooseMarks(searchHost, this.host.units(), query, hit, this.host.filePath());
 		for (const mark of marksPerShape(marks, shapeIdOfAnchor)) {
 			const bounds = renderer.getShapeBounds(mark.shapeId);

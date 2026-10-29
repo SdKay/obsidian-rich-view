@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { MatchOptions, OpenedHit, RichSearchHostApi, Span } from '../src/richSearchApi';
-import { findSearchHost, matchText, readLiveSearch, SearchSubscription, subscribeToSearch } from '../src/searchHost';
+import { findSearchHost, matchText, readInScope, readLiveSearch, SearchSubscription, subscribeToSearch } from '../src/searchHost';
 import { chooseMarks, marksPerShape, sameAnchor, type MarkableUnit, type MarkTarget } from '../src/matchTargets';
 import { shapeIdOfAnchor } from '../src/pageUnits';
 
@@ -277,5 +277,151 @@ describe('SearchSubscription', () => {
 	it('stop on one that never started is harmless, and so is stopping twice', () => {
 		const sub = new SearchSubscription(() => null, () => {});
 		expect(() => { sub.stop(); sub.stop(); }).not.toThrow();
+	});
+});
+
+describe('scope: marks stay inside the search scope (contract 5.11)', () => {
+	const q: MatchOptions = { query: 'x' };
+	const hit: OpenedHit = { path: 'in/a.drawio', line: 0, index: 0, anchor: { page: 'P', cellId: 'a' } };
+
+	/** A host with a live query and a scope that can be changed and that notifies. `parts` picks which scope members exist. */
+	function scopedHost(parts: { inScope?: boolean; onScopeChange?: boolean }, covered: (path: string) => boolean = () => true) {
+		const scopeListeners = new Set<() => void>();
+		const state = { covered };
+		const api: Partial<RichSearchHostApi> = {
+			apiVersion: 1,
+			matchLine: literal,
+			currentQuery: () => q,
+			currentHit: () => hit,
+			onQueryChange: () => () => {},
+			onHitChange: () => () => {},
+		};
+		if (parts.inScope) api.inScope = path => state.covered(path);
+		if (parts.onScopeChange) api.onScopeChange = l => { scopeListeners.add(l); return () => { scopeListeners.delete(l); }; };
+		const host = findSearchHost({ plugins: { plugins: { 'rich-search': { api } } } } as never);
+		return { host, state, fireScope: () => { scopeListeners.forEach(l => l()); }, listeners: () => scopeListeners.size };
+	}
+
+	describe('readInScope', () => {
+		it('is true when the host has no inScope (an older rich-search): every file is covered', () => {
+			expect(readInScope(scopedHost({}).host, 'any/file.drawio')).toBe(true);
+			expect(readInScope(scopedHost({ onScopeChange: true }).host, 'any/file.drawio')).toBe(true);
+		});
+		it('is true without a host', () => {
+			expect(readInScope(null, 'a.drawio')).toBe(true);
+		});
+		it('passes the path to the host and returns its answer', () => {
+			const seen: string[] = [];
+			const { host } = scopedHost({ inScope: true }, p => { seen.push(p); return p.startsWith('in/'); });
+			expect(readInScope(host, 'in/a.drawio')).toBe(true);
+			expect(readInScope(host, 'out/b.drawio')).toBe(false);
+			expect(seen).toEqual(['in/a.drawio', 'out/b.drawio']);
+		});
+		it('counts a throw from inScope as covered', () => {
+			const { host } = scopedHost({ inScope: true }, () => { throw new Error('boom'); });
+			expect(readInScope(host, 'a.drawio')).toBe(true);
+		});
+	});
+
+	describe('readLiveSearch with a path', () => {
+		it('draws nothing, not even the opened hit, while the file is out of scope', () => {
+			const { host } = scopedHost({ inScope: true }, () => false);
+			expect(readLiveSearch(host, undefined, 'out/a.drawio')).toEqual({ query: null, hit: null });
+		});
+		it('does not fall back to the click query while out of scope', () => {
+			const { host } = scopedHost({ inScope: true }, () => false);
+			expect(readLiveSearch(host, { query: 'clicked' }, 'out/a.drawio')).toEqual({ query: null, hit: null });
+		});
+		it('draws from currentQuery again once the file is back in scope', () => {
+			const { host, state } = scopedHost({ inScope: true }, () => false);
+			expect(readLiveSearch(host, undefined, 'a.drawio').query).toBeNull();
+			state.covered = () => true;
+			expect(readLiveSearch(host, undefined, 'a.drawio')).toEqual({ query: q, hit });
+		});
+		it('is exactly as before when inScope is missing: the live query and the hit are read as ever', () => {
+			expect(readLiveSearch(scopedHost({}).host, undefined, 'a.drawio')).toEqual({ query: q, hit });
+			expect(readLiveSearch(scopedHost({ onScopeChange: true }).host, undefined, 'a.drawio')).toEqual({ query: q, hit });
+		});
+		it('is exactly as before when inScope throws', () => {
+			const { host } = scopedHost({ inScope: true }, () => { throw new Error('boom'); });
+			expect(readLiveSearch(host, undefined, 'a.drawio')).toEqual({ query: q, hit });
+		});
+		it('is unchanged when no path is given', () => {
+			const { host } = scopedHost({ inScope: true }, () => false);
+			expect(readLiveSearch(host)).toEqual({ query: q, hit });
+		});
+	});
+
+	describe('subscribeToSearch and onScopeChange', () => {
+		it('calls the listener on every scope change, even though the query did not change, and stops after unsubscribing', () => {
+			const { host, fireScope, listeners } = scopedHost({ inScope: true, onScopeChange: true });
+			let calls = 0;
+			const stop = subscribeToSearch(host, () => { calls++; });
+			fireScope();
+			fireScope();
+			expect(calls).toBe(2);
+			stop();
+			fireScope();
+			expect(calls).toBe(2);
+			expect(listeners()).toBe(0);
+		});
+		it('ignores onScopeChange when inScope is missing: nothing is subscribed', () => {
+			const { host, fireScope, listeners } = scopedHost({ onScopeChange: true });
+			let calls = 0;
+			const stop = subscribeToSearch(host, () => { calls++; });
+			expect(listeners()).toBe(0);
+			fireScope();
+			expect(calls).toBe(0);
+			expect(() => stop()).not.toThrow();
+		});
+		it('does nothing extra when only inScope is there: it is read on the next repaint', () => {
+			const { host } = scopedHost({ inScope: true });
+			const stop = subscribeToSearch(host, () => {});
+			expect(() => stop()).not.toThrow();
+		});
+		it('survives an onScopeChange that throws, and still ends the other subscriptions', () => {
+			let queryStops = 0;
+			const api: Partial<RichSearchHostApi> = {
+				apiVersion: 1,
+				matchLine: literal,
+				inScope: () => true,
+				onScopeChange: () => { throw new Error('boom'); },
+				onQueryChange: () => () => { queryStops++; },
+			};
+			const host = findSearchHost({ plugins: { plugins: { 'rich-search': { api } } } } as never);
+			const stop = subscribeToSearch(host, () => {});
+			expect(() => stop()).not.toThrow();
+			expect(queryStops).toBe(1);
+		});
+		it('SearchSubscription renew ends the earlier scope subscription before making a new one', () => {
+			const { host, listeners } = scopedHost({ inScope: true, onScopeChange: true });
+			const sub = new SearchSubscription(() => host, () => {});
+			sub.renew();
+			sub.renew();
+			expect(listeners()).toBe(1);
+			sub.stop();
+			expect(listeners()).toBe(0);
+		});
+	});
+
+	describe('the four pairings', () => {
+		it('new view + old rich-search (no inScope): marks exactly as before, no error', () => {
+			const { host } = scopedHost({});
+			const units: MarkableUnit[] = [{ anchor: { page: 'P', cellId: 'a' }, text: 'xx' }];
+			const live = readLiveSearch(host, undefined, 'any.drawio');
+			expect(chooseMarks(host, units, live.query, live.hit, 'in/a.drawio')).toHaveLength(1);
+		});
+		it('new view + new rich-search: no marks outside the scope, marks again inside', () => {
+			const { host, state } = scopedHost({ inScope: true, onScopeChange: true }, p => p.startsWith('in/'));
+			const units: MarkableUnit[] = [{ anchor: { page: 'P', cellId: 'a' }, text: 'xx' }];
+			const markCount = (path: string) => {
+				const live = readLiveSearch(host, undefined, path);
+				return chooseMarks(host, units, live.query, live.hit, path).length;
+			};
+			expect(markCount('out/a.drawio')).toBe(0);
+			expect(markCount('in/a.drawio')).toBe(1);
+			state.covered = () => true;
+			expect(markCount('out/a.drawio')).toBe(1);
+		});
 	});
 });

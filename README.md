@@ -178,6 +178,7 @@ With [Rich Search](https://github.com/SdKay/obsidian-rich-search) installed, tex
 | PowerPoint | Every text box and table cell | The slide, keyword marked |
 
 - While the search panel is open, every match in the open file is marked. The one you clicked is brighter, with an outline. The colour is the one you set in Rich Search.
+- Marks follow the search scope. A file outside the folders or file types you limited the search to is not marked, even if it is open in another tab, and the marks appear or disappear as soon as you change the scope. (Needs a Rich Search version that publishes its scope; with an older one every open file is marked.)
 - If the diagram is too small to read, it zooms in until the text is about as big as your note text.
 - PowerPoint marks the keyword itself when it can measure the text, otherwise the whole text box. draw.io and Visio mark the whole shape.
 - No Rich Search? Files open as usual, just without marks.

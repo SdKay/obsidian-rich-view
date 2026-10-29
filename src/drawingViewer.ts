@@ -376,6 +376,7 @@ export class DrawingViewer extends RichViewer {
 			renderer: () => this.renderer,
 			units: () => this.currentUnits(),
 			filePath: () => this.options.filename,
+			scopePath: () => this.sourcePath,
 		});
 		this.addChild(this.searchMarks);
 	}

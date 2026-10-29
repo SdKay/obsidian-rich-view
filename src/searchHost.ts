@@ -35,10 +35,26 @@ export interface LiveSearch {
 }
 
 /**
+ * Whether the search covers `path` (contract 5.11). A host without `inScope`, a missing host and a check that
+ * throws all count as covered: a file is never left unmarked because the check is unavailable or broken.
+ */
+export function readInScope(host: RichSearchHostApi | null, path: string): boolean {
+	if (typeof host?.inScope !== 'function') return true;
+	try {
+		return host.inScope(path) !== false;
+	} catch {
+		return true;
+	}
+}
+
+/**
+ * `path` is the file the marks would be drawn in (the note's path for a block inside a note). While the search
+ * does not cover it, nothing is read: no query, no opened hit, and the click query is not a fallback either.
  * `clicked` is the query that came with the click (`eState`). It is only a fallback for a host that has no
  * `currentQuery` at all (contract 5.8); a host that has it always wins, including when it says "no search".
  */
-export function readLiveSearch(host: RichSearchHostApi | null, clicked?: MatchOptions): LiveSearch {
+export function readLiveSearch(host: RichSearchHostApi | null, clicked?: MatchOptions, path?: string): LiveSearch {
+	if (path !== undefined && !readInScope(host, path)) return { query: null, hit: null };
 	const hasLiveQuery = typeof host?.currentQuery === 'function';
 	return {
 		query: hasLiveQuery
@@ -57,7 +73,7 @@ function safeCall<T>(read: () => T | null): T | null {
 }
 
 /**
- * Subscribes to query and opened-hit changes, tolerating a host that predates either.
+ * Subscribes to query, opened-hit and scope changes, tolerating a host that predates either.
  * Returns one function that ends every subscription it managed to make.
  */
 export function subscribeToSearch(host: RichSearchHostApi | null, listener: () => void): () => void {
@@ -72,6 +88,8 @@ export function subscribeToSearch(host: RichSearchHostApi | null, listener: () =
 	};
 	if (host && typeof host.onQueryChange === 'function') add(() => host.onQueryChange?.(listener));
 	if (host && typeof host.onHitChange === 'function') add(() => host.onHitChange?.(listener));
+	// A scope change is only meaningful next to inScope; without it the listener would have nothing new to read.
+	if (host && typeof host.inScope === 'function' && typeof host.onScopeChange === 'function') add(() => host.onScopeChange?.(listener));
 	return () => {
 		for (const stop of stops.splice(0)) {
 			try { stop(); } catch { /* already gone */ }
