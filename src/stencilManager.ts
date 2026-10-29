@@ -2,14 +2,13 @@ import { requestUrl, normalizePath } from 'obsidian';
 import type { DataAdapter, Vault } from 'obsidian';
 import { StencilShape, StencilShapeRegistry, ShapeRegistry } from '@maxgraph/core';
 import { parseDrawioFile } from './drawioParser';
+import { imageUrl, stencilDirFiles, stencilFileUrl } from './stencilSource';
 
 // Module-level caches, live for the whole Obsidian session.
 const imageDataUriCache = new Map<string, string>();  // svg path → data URI
 // Registered keys: flat lib stem (e.g. "aws4") or dir subfile ("electrical/plc_ladder").
 // Sub-file granularity means a huge dir-lib only parses the files actually used.
 const loadedKeys = new Set<string>();
-
-const IMG_RAW_BASE = 'https://raw.githubusercontent.com/jgraph/drawio/dev/src/main/webapp/img/lib/';
 
 // ---------------------------------------------------------------------------
 // Official library catalog
@@ -52,8 +51,6 @@ export const OFFICIAL_LIBS: LibEntry[] = [
 	{ name: 'Electrical',                 file: 'electrical',  category: 'Engineering', isDir: true },
 	{ name: 'P&ID',                       file: 'pid',         category: 'Engineering', isDir: true },
 ];
-
-const RAW_BASE = 'https://raw.githubusercontent.com/jgraph/drawio/dev/src/main/webapp/stencils/';
 
 // ---------------------------------------------------------------------------
 // StencilManager
@@ -181,7 +178,7 @@ class StencilManager {
 		adapter: DataAdapter,
 		stencilsDir: string,
 	): Promise<void> {
-		const response = await requestUrl({ url: `${IMG_RAW_BASE}${relPath}`, method: 'GET' });
+		const response = await requestUrl({ url: imageUrl(relPath), method: 'GET' });
 		const localPath = normalizePath(`${stencilsDir}/img/${relPath}`);
 		const dir = localPath.substring(0, localPath.lastIndexOf('/'));
 		if (!(await adapter.exists(dir))) await adapter.mkdir(dir);
@@ -250,6 +247,9 @@ class StencilManager {
 		const missing: string[] = [];
 		for (const lib of libs) {
 			if (loadedKeys.has(lib)) continue;
+			// Only the official libraries have anything to download. The rest (e.g. `infographic`) are drawn by code
+			// inside draw.io, so offering them would send the user to a download that cannot succeed.
+			if (!OFFICIAL_LIBS.some(e => e.file === lib)) continue;
 			if (!(await this.isLibOnDisk(lib, adapter, stencilsDir, userDir))) {
 				missing.push(lib);
 			}
@@ -293,16 +293,10 @@ class StencilManager {
 			if (listing.files.some(f => f.endsWith('.xml'))) return;  // already downloaded
 		}
 
-		// Fetch the directory listing via the GitHub API, then download each file.
-		const apiUrl = `https://api.github.com/repos/jgraph/drawio/contents/src/main/webapp/stencils/${dir}`;
-		const resp = await requestUrl({ url: apiUrl, method: 'GET' });
-		const entries = resp.json as Array<{ name: string; type: string }>;
-		const xmlFiles = entries.filter(e => e.type === 'file' && e.name.endsWith('.xml'));
-
 		if (!(await adapter.exists(localDir))) await adapter.mkdir(localDir);
-		await Promise.all(xmlFiles.map(async f => {
-			const content = (await requestUrl({ url: `${RAW_BASE}${dir}/${f.name}`, method: 'GET' })).text;
-			await adapter.write(normalizePath(`${localDir}/${f.name}`), content);
+		await Promise.all(stencilDirFiles(dir).map(async name => {
+			const content = (await requestUrl({ url: stencilFileUrl(`${dir}/${name}`), method: 'GET' })).text;
+			await adapter.write(normalizePath(`${localDir}/${name}.xml`), content);
 		}));
 	}
 
@@ -333,7 +327,7 @@ class StencilManager {
 			return;
 		}
 		if (!(await adapter.exists(stencilsDir))) await adapter.mkdir(stencilsDir);
-		const response = await requestUrl({ url: `${RAW_BASE}${file}.xml`, method: 'GET' });
+		const response = await requestUrl({ url: stencilFileUrl(file), method: 'GET' });
 		await adapter.write(normalizePath(`${stencilsDir}/${file}.xml`), response.text);
 	}
 

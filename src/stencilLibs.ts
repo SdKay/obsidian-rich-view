@@ -1,4 +1,5 @@
 import { App, Component } from 'obsidian';
+import { describeDownloadFailure } from './downloadFailure';
 import { OFFICIAL_LIBS, stencilManager } from './stencilManager';
 import type { RichViewSettings } from './settings';
 
@@ -144,11 +145,13 @@ export class StencilLibs extends Component {
 		// and re-rendering would resurrect a renderer nothing will ever destroy().
 		if (this.unloaded) return;
 
-		if (results.some(r => r.status === 'rejected')) {
+		const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
+		if (failures.length > 0) {
+			for (const f of failures) console.error('Stencil download failed:', f.reason);
 			banner.empty();
 			banner.createSpan({
 				cls: 'drawio-libs-banner-msg drawio-libs-banner-error',
-				text: 'Some downloads failed — check your network and reload.',
+				text: describeDownloadFailure(failures.map((f): unknown => f.reason)),
 			});
 			this.addBannerButton(banner.createDiv('drawio-libs-banner-actions'), '✕', 'drawio-libs-banner-btn',
 				() => { banner.removeClass('is-visible'); });
