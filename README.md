@@ -63,6 +63,8 @@
 
 Show draw.io, Visio and PowerPoint files right inside your notes. Zoom, pan, flip through pages, follow shape links. Word, CAD and more are on the list.
 
+![overview](docs/overview.gif) -->
+
 ---
 
 ## Features
