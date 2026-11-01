@@ -161,6 +161,8 @@
     /* Claim all touch gestures so the browser never steals pinch/drag for
        native scroll or zoom — pan/zoom is handled via Pointer Events. */
     touch-action: none;
+    /* The frame is user-select: none so toolbar clicks never select; the drawing itself can be selected (Alt+drag). */
+    user-select: text;
 }
 
 .drawing-view-graph.has-link-hover {
@@ -169,6 +171,11 @@
 
 .drawing-view-graph.is-grabbing {
     cursor: grabbing;
+}
+
+/* Alt held over the drawing: a drag selects text rather than pans. */
+.drawing-view-graph.is-selecting-text {
+    cursor: text;
 }
 
 /* Inner pan layer that @maxgraph renders into; this is what gets CSS-translated.
@@ -419,6 +426,8 @@
     background: var(--background-secondary);
     padding: 8px;
     box-sizing: border-box;
+    /* The frame is user-select: none so toolbar clicks never select; slide text can be selected and copied. */
+    user-select: text;
 }
 
 .slide-view-stage > div {

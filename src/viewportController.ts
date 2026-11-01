@@ -1,5 +1,6 @@
 import { Component } from 'obsidian';
 import type { RichViewSettings } from './settings';
+import { startsTextSelection } from './textSelectGesture';
 
 /**
  * Bridge to the committed @maxgraph view.  The controller owns the *uncommitted*
@@ -60,6 +61,9 @@ export class PanZoomController extends Component {
 	/** Set while an overlay (e.g. the magnifier) owns wheel/pointer input instead. */
 	private suspended = false;
 
+	private hovering = false;
+	private altDown = false;
+
 	/** Whether the current/last pointer interaction actually moved (pan or pinch). */
 	private gestured = false;
 
@@ -91,6 +95,16 @@ export class PanZoomController extends Component {
 
 		// ── Pointer pan + pinch ───────────────────────────────────────────────
 		this.registerDomEvent(this.graphEl, 'pointerdown', (e: PointerEvent) => this.onPointerDown(e));
+		// Alt over the drawing means "a drag selects text", so the cursor says so instead of offering the pan hand.
+		this.registerDomEvent(this.graphEl, 'pointermove', (e: PointerEvent) => { this.hovering = true; this.altDown = e.altKey; this.syncTextCursor(); });
+		this.registerDomEvent(this.graphEl, 'pointerleave', () => { this.hovering = false; this.syncTextCursor(); });
+		this.registerDomEvent(activeDocument, 'keydown', (e: KeyboardEvent) => { this.altDown = e.altKey; this.syncTextCursor(); });
+		this.registerDomEvent(activeDocument, 'keyup', (e: KeyboardEvent) => { this.altDown = e.altKey; this.syncTextCursor(); });
+		this.registerDomEvent(window, 'blur', () => { this.altDown = false; this.syncTextCursor(); });
+		// Alt+press selects text: keep the press away from the note editor underneath, which would otherwise start its own selection.
+		this.registerDomEvent(this.graphEl, 'mousedown', (e: MouseEvent) => {
+			if (startsTextSelection({ pointerType: 'mouse', button: e.button, altKey: e.altKey })) e.stopPropagation();
+		});
 		this.registerDomEvent(this.graphEl, 'pointermove', (e: PointerEvent) => this.onPointerMove(e));
 		this.registerDomEvent(this.graphEl, 'pointerup', (e: PointerEvent) => this.onPointerUp(e));
 		this.registerDomEvent(this.graphEl, 'pointercancel', (e: PointerEvent) => this.onPointerUp(e));
@@ -144,12 +158,24 @@ export class PanZoomController extends Component {
 		this.flushView();
 	}
 
+	private syncTextCursor(): void {
+		if (this.hovering && this.altDown && !this.suspended) this.graphEl.addClass('is-selecting-text');
+		else this.graphEl.removeClass('is-selecting-text');
+	}
+
 	// ── Pointer handlers ────────────────────────────────────────────────────────
 
 	private onPointerDown(e: PointerEvent): void {
 		if (this.suspended) return;
 		// Ignore non-primary mouse buttons; touch/pen report button 0.
 		if (e.pointerType === 'mouse' && e.button !== 0) return;
+		if (startsTextSelection(e)) {
+			// No preventDefault: that is what would stop the browser from starting a selection.
+			e.stopPropagation();
+			return;
+		}
+		// A plain press drops an earlier selection, as it would anywhere else.
+		this.graphEl.win.getSelection()?.removeAllRanges();
 		e.preventDefault();
 		e.stopPropagation();
 		this.cancelCommit();

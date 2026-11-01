@@ -166,7 +166,8 @@ export class LinkHover extends Component {
 	private onClick(e: MouseEvent): void {
 		e.stopPropagation();
 		const renderer = this.host.renderer();
-		if (this.host.pointerBusy() || this.host.didGesture() || !renderer) return;
+		// The click that ends an Alt+drag selection is not a request to follow a link.
+		if (e.altKey || this.host.pointerBusy() || this.host.didGesture() || !renderer) return;
 		const ctrlHeld = e.ctrlKey || e.metaKey;
 		// Pan-first: Ctrl+click follows a link. Link-first: a plain click does.
 		const shouldFollow = this.host.clickFollowsLink() ? !ctrlHeld : ctrlHeld;
