@@ -9,6 +9,7 @@ import { createProvider, SEARCH_EXTENSIONS } from './search/provider';
 import type { RichSearchProvider } from './richSearchApi';
 import { openDiagramFilePicker } from './diagramFilePicker';
 import { t } from './i18n';
+import { BlockRefUpdater } from './blockRefUpdater';
 
 /**
  * Replace a `rich-view` code block's parameter line with `newParams`,
@@ -120,6 +121,10 @@ export default class RichViewPlugin extends Plugin {
 
 		const stencilsDir = normalizePath(`${this.app.vault.configDir}/plugins/${this.manifest.id}/stencils`);
 		this.registerFileView(stencilsDir);
+
+		const refUpdater = new BlockRefUpdater(this.app, SEARCH_EXTENSIONS);
+		this.register(() => { refUpdater.dispose(); });
+		this.registerEvent(this.app.vault.on('rename', (file, oldPath) => { refUpdater.onRename(file, oldPath); }));
 
 		this.registerMarkdownCodeBlockProcessor('rich-view', (source, el, ctx) => {
 			const trimmed = source.trim();

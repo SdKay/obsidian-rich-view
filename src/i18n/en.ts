@@ -8,6 +8,7 @@ export const en = {
 	copiedVisioObject: 'Copied the page as a Visio object',
 	copiedCodeBlock: 'Copied rich-view code block',
 	copyFailed: 'Could not copy to the clipboard',
+	updatedFileRefs: 'Updated {blocks} rich-view block(s) in {notes} note(s) to follow the moved file',
 	editLink: 'Edit link',
 	resizeHandle: 'Drag to resize height',
 	magnifier: 'Magnifier (+/- to resize, Esc to exit)',

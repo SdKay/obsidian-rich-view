@@ -9,6 +9,7 @@ export const zh: Dictionary = {
 	copiedVisioObject: '已将当前页复制为 Visio 对象',
 	copiedCodeBlock: '已复制 rich-view 代码块',
 	copyFailed: '无法复制到剪贴板',
+	updatedFileRefs: '已更新 {notes} 篇笔记中的 {blocks} 个 rich-view 代码块，跟随文件的新位置',
 	editLink: '编辑链接',
 	resizeHandle: '拖动调整高度',
 	magnifier: '放大镜（+/- 调整范围，Esc 退出）',
