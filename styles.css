@@ -339,7 +339,108 @@
     font-size: var(--font-ui-smaller);
 }
 
-/* ── Missing libs banner ─────────────────────────────────── */
+/* ── Status cards and prompts (one look for everything a block says instead of a diagram) ── */
+.drawing-view-status {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    /* Stay as tall as the viewer would have been, so the note does not jump. */
+    min-height: inherit;
+    box-sizing: border-box;
+    padding: 24px 16px;
+    text-align: center;
+    border: 1px dashed var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    background: var(--background-secondary);
+}
+
+.drawing-view-status-icon {
+    color: var(--text-faint);
+}
+
+.drawing-view-status.is-error .drawing-view-status-icon {
+    color: var(--text-error);
+}
+
+.drawing-view-status-icon .svg-icon {
+    width: 32px;
+    height: 32px;
+}
+
+.drawing-view-status-title {
+    font-size: var(--font-ui-medium);
+    font-weight: var(--font-semibold);
+    color: var(--text-normal);
+}
+
+.drawing-view-status-title.is-error {
+    color: var(--text-error);
+}
+
+.drawing-view-status-detail {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    font-family: var(--font-monospace);
+    font-size: var(--font-ui-small);
+    color: var(--text-muted);
+}
+
+.drawing-view-status-hint {
+    font-size: var(--font-ui-small);
+    color: var(--text-faint);
+}
+
+.drawing-view-status .drawing-view-action {
+    margin-top: 8px;
+}
+
+/* The button every prompt uses. */
+.drawing-view-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 24px;
+    border-radius: var(--radius-m);
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    font-size: var(--font-ui-medium);
+    font-weight: var(--font-semibold);
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+}
+
+.drawing-view-action:hover {
+    background: var(--interactive-accent-hover);
+    color: var(--text-on-accent);
+}
+
+.drawing-view-action:focus-visible {
+    outline: 2px solid var(--interactive-accent);
+    outline-offset: 1px;
+}
+
+.drawing-view-action.is-small {
+    padding: 2px 10px;
+    font-size: var(--font-ui-small);
+    font-weight: var(--font-normal);
+}
+
+.drawing-view-action.is-quiet {
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--background-modifier-border);
+}
+
+.drawing-view-action.is-quiet:hover {
+    background: transparent;
+    color: var(--text-normal);
+    border-color: var(--interactive-accent);
+}
+
+/* The same message as a strip over the drawing, when the drawing itself still shows (missing shape libraries). */
 .drawing-view-libs-banner {
     display: none;
     position: absolute;
@@ -348,13 +449,12 @@
     right: 8px;
     flex-direction: row;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
     padding: 8px 12px;
     background: var(--background-primary);
-    border: 1px solid var(--interactive-accent);
+    border: 1px solid var(--background-modifier-border);
     border-left: 4px solid var(--interactive-accent);
     border-radius: var(--radius-s);
-    font-size: var(--font-ui-small);
     z-index: 15;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
 }
@@ -363,59 +463,26 @@
     display: flex;
 }
 
-.drawio-libs-banner-msg {
+.drawing-view-libs-banner-msg {
     flex: 1;
-    color: var(--text-normal);
-    font-weight: var(--font-semibold);
-    white-space: nowrap;
+    min-width: 0;
+}
+
+.drawing-view-libs-banner .drawing-view-status-title {
+    font-size: var(--font-ui-small);
+}
+
+.drawing-view-libs-banner .drawing-view-status-title,
+.drawing-view-libs-banner .drawing-view-status-hint {
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-.drawio-libs-banner-hint {
-    color: var(--text-muted);
-    font-weight: var(--font-normal);
-}
-
-.drawio-libs-banner-error {
-    color: var(--text-error);
-}
-
-.drawio-libs-banner-actions {
+.drawing-view-libs-banner-actions {
     display: flex;
     gap: 6px;
     flex-shrink: 0;
-}
-
-.drawio-libs-banner-btn {
-    cursor: pointer;
-    color: var(--text-muted);
-    padding: 1px 6px;
-    border: 1px solid var(--background-modifier-border);
-    border-radius: var(--radius-s);
-    user-select: none;
-    white-space: nowrap;
-}
-
-.drawio-libs-banner-btn:hover {
-    color: var(--text-normal);
-    border-color: var(--interactive-accent);
-}
-
-.drawio-libs-banner-btn-primary {
-    color: var(--interactive-accent);
-    border-color: var(--interactive-accent);
-}
-
-.drawio-libs-banner-btn-primary:hover {
-    background: color-mix(in srgb, var(--interactive-accent) 10%, transparent);
-}
-
-/* ── Error ───────────────────────────────────────────────── */
-.drawing-view-error {
-    padding: 12px;
-    color: var(--text-error);
-    font-size: var(--font-ui-small);
 }
 
 /* ── Slide viewer (paginated documents) ─────────────────── */
@@ -432,39 +499,6 @@
 
 .slide-view-stage > div {
     flex: none;
-}
-
-/* ── Import-file prompt (blank rich-view block) ─────────── */
-.drawing-view-import-prompt {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 24px 12px;
-}
-
-.drawing-view-import-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 12px 32px;
-    border: none;
-    border-radius: var(--radius-m);
-    background: var(--interactive-accent);
-    color: var(--text-on-accent);
-    font-size: var(--font-ui-medium);
-    font-weight: var(--font-semibold);
-    cursor: pointer;
-    user-select: none;
-}
-
-.drawing-view-import-btn:hover {
-    background: var(--interactive-accent-hover);
-    color: var(--text-on-accent);
-}
-
-.drawing-view-import-btn:focus-visible {
-    outline: 2px solid var(--interactive-accent);
-    outline-offset: 1px;
 }
 
 /* ── Settings: Shape Libraries section ───────────────────── */

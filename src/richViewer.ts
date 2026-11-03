@@ -3,6 +3,8 @@ import { blockHeight, formatCodeBlock } from './codeBlockText';
 import { buildVisioClipboard } from './copyVisioObject';
 import { writeClipboardFormat } from './nodeBridge';
 import { isFullscreen } from './frame/fullscreen';
+import { renderStatusCard } from './statusCard';
+import { switchFile } from './switchFile';
 import { t } from './i18n';
 import type { ViewOptions } from './viewParams';
 import type { SearchRequest } from './searchRequest';
@@ -105,7 +107,7 @@ export abstract class RichViewer extends Component {
 	}
 
 	protected showError(message: string): void {
-		this.container.createDiv({ cls: 'drawing-view-error', text: message });
+		renderStatusCard(this.container, { icon: 'triangle-alert', tone: 'error', title: t('cannotShowFile'), detail: message });
 	}
 
 	/** Open the file in the system's default app (e.g. draw.io desktop, PowerPoint). */
@@ -166,7 +168,13 @@ export abstract class RichViewer extends Component {
 	private async initAndLoad(): Promise<void> {
 		const file = this.resolveFile(this.options.filename);
 		if (!file) {
-			this.showError(`File not found: ${this.options.filename}`);
+			const writeParams = this.writeParams;
+			renderStatusCard(this.container, {
+				icon: 'file-x', tone: 'error',
+				title: t('fileNotFound'), detail: this.options.filename, hint: t('fileNotFoundHint'),
+				// A file tab has no block to rewrite, so nothing to choose a replacement for.
+				action: writeParams ? { label: t('chooseAnotherFile'), run: () => { switchFile(this.app, this.options, writeParams); } } : undefined,
+			});
 			return;
 		}
 

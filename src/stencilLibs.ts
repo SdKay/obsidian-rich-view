@@ -1,4 +1,6 @@
 import { App, Component } from 'obsidian';
+import { addActionButton } from './statusCard';
+import { t } from './i18n';
 import { describeDownloadFailure } from './downloadFailure';
 import { OFFICIAL_LIBS, stencilManager } from './stencilManager';
 import type { RichViewSettings } from './settings';
@@ -90,31 +92,23 @@ export class StencilLibs extends Component {
 		this.showBanner([...new Set([...stencilNames, ...imageNames])]);
 	}
 
-	private addBannerButton(parent: HTMLElement, text: string, cls: string, onClick: () => void): void {
-		const btn = parent.createSpan({
-			cls,
-			attr: { role: 'button', tabindex: '0' },
-			text,
-		});
-		this.registerDomEvent(btn, 'click', onClick);
-		this.registerDomEvent(btn, 'keydown', (e: KeyboardEvent) => {
-			if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); }
-		});
+	private addBannerButton(parent: HTMLElement, label: string, onClick: () => void, primary = false): void {
+		const btn = addActionButton(parent, label, onClick, primary ? 'drawing-view-action' : 'drawing-view-action is-quiet');
+		btn.addClass('is-small');
 	}
 
 	private showBanner(names: string[]): void {
 		const banner = this.bannerEl;
 		banner.empty();
 
-		const msg = banner.createSpan({ cls: 'drawio-libs-banner-msg' });
-		msg.appendText(`⚠ Missing shape libraries: ${names.join(', ')} `);
-		msg.createSpan({ cls: 'drawio-libs-banner-hint', text: '— download here or in plugin settings' });
+		const msg = banner.createDiv({ cls: 'drawing-view-libs-banner-msg' });
+		msg.createDiv({ cls: 'drawing-view-status-title', text: t('libsMissing').replace('{names}', names.join(', ')) });
+		msg.createDiv({ cls: 'drawing-view-status-hint', text: t('libsMissingHint') });
 
-		const actions = banner.createDiv('drawio-libs-banner-actions');
-		this.addBannerButton(actions, 'Download', 'drawio-libs-banner-btn drawio-libs-banner-btn-primary',
-			() => { void this.downloadPending(); });
-		this.addBannerButton(actions, 'Settings', 'drawio-libs-banner-btn', () => { this.openPluginSettings(); });
-		this.addBannerButton(actions, '✕', 'drawio-libs-banner-btn', () => { banner.removeClass('is-visible'); });
+		const actions = banner.createDiv('drawing-view-libs-banner-actions');
+		this.addBannerButton(actions, t('libsDownload'), () => { void this.downloadPending(); }, true);
+		this.addBannerButton(actions, t('libsSettings'), () => { this.openPluginSettings(); });
+		this.addBannerButton(actions, t('close'), () => { banner.removeClass('is-visible'); });
 
 		banner.addClass('is-visible');
 	}
@@ -135,7 +129,7 @@ export class StencilLibs extends Component {
 		const images = this.pendingImages;
 
 		banner.empty();
-		const msg = banner.createSpan({ cls: 'drawio-libs-banner-msg', text: 'Downloading…' });
+		const msg = banner.createDiv({ cls: 'drawing-view-status-title', text: t('libsDownloading') });
 
 		const results = await Promise.allSettled([
 			...stencils.map(lib => stencilManager.downloadLib(lib, adapter, this.stencilsDir)),
@@ -149,16 +143,18 @@ export class StencilLibs extends Component {
 		if (failures.length > 0) {
 			for (const f of failures) console.error('Stencil download failed:', f.reason);
 			banner.empty();
-			banner.createSpan({
-				cls: 'drawio-libs-banner-msg drawio-libs-banner-error',
+			banner.createDiv({
+				cls: 'drawing-view-libs-banner-msg',
+			}).createDiv({
+				cls: 'drawing-view-status-title is-error',
 				text: describeDownloadFailure(failures.map((f): unknown => f.reason)),
 			});
-			this.addBannerButton(banner.createDiv('drawio-libs-banner-actions'), '✕', 'drawio-libs-banner-btn',
+			this.addBannerButton(banner.createDiv('drawing-view-libs-banner-actions'), t('close'),
 				() => { banner.removeClass('is-visible'); });
 			return;
 		}
 
-		msg.setText('Done — rendering…');
+		msg.setText(t('libsRendering'));
 		// Register the newly downloaded libs, then re-render once.
 		await stencilManager.registerLocalLibs(stencils, this.host.currentPageXml(), adapter, this.stencilsDir, this.userDir);
 		banner.removeClass('is-visible');

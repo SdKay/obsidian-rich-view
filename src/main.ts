@@ -1,4 +1,4 @@
-import { MarkdownRenderChild, MarkdownSectionInformation, Plugin, TFile, normalizePath, setTooltip } from 'obsidian';
+import { MarkdownPostProcessorContext, MarkdownRenderChild, MarkdownSectionInformation, Plugin, TFile, normalizePath } from 'obsidian';
 import { migrateLegacyParams, parseViewParams, type ViewOptions } from './viewParams';
 import { DrawingViewer } from './drawingViewer';
 import { SlideViewer } from './slideViewer';
@@ -10,6 +10,7 @@ import type { RichSearchProvider } from './richSearchApi';
 import { openDiagramFilePicker } from './diagramFilePicker';
 import { t } from './i18n';
 import { BlockRefUpdater } from './blockRefUpdater';
+import { renderStatusCard } from './statusCard';
 
 /**
  * Replace a `rich-view` code block's parameter line with `newParams`,
@@ -65,21 +66,6 @@ async function writeBlockParams(
 	await app.vault.process(file, content => rewriteBlockParams(content, newParams, sectionInfo, originalSource));
 }
 
-/** Renders the "Import file" prompt shown for a completely empty rich-view block. */
-function renderImportPrompt(el: HTMLElement, onClick: () => void): void {
-	const wrap = el.createDiv({ cls: 'drawing-view-import-prompt' });
-	const btn = wrap.createSpan({
-		cls: 'drawing-view-import-btn',
-		attr: { role: 'button', tabindex: '0', 'aria-label': t('importFile') },
-		text: t('importFile'),
-	});
-	setTooltip(btn, t('importFile'));
-	btn.addEventListener('click', onClick);
-	btn.addEventListener('keydown', (e: KeyboardEvent) => {
-		if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); }
-	});
-}
-
 class RichCodeBlock extends MarkdownRenderChild {
 	constructor(
 		el: HTMLElement,
@@ -130,10 +116,11 @@ export default class RichViewPlugin extends Plugin {
 			const trimmed = source.trim();
 
 			if (!trimmed) {
-				renderImportPrompt(el, () => openDiagramFilePicker(this.app, (file) => {
-					const sectionInfo = ctx.getSectionInfo(el);
-					void writeBlockParams(this.app, ctx.sourcePath, sectionInfo, source, `file=${file.path}`);
-				}));
+				renderStatusCard(el, {
+					icon: 'file-plus',
+					title: t('chooseFile'), hint: t('chooseFileHint'),
+					action: { label: t('importFile'), run: () => this.chooseFileFor(el, ctx, source) },
+				});
 				return;
 			}
 
@@ -147,7 +134,11 @@ export default class RichViewPlugin extends Plugin {
 			}
 
 			if (!options.filename) {
-				el.createDiv({ cls: 'drawing-view-error', text: 'No filename specified. Use `file=<name>`.' });
+				renderStatusCard(el, {
+					icon: 'file-question', tone: 'error',
+					title: t('noFileInBlock'), hint: t('noFileInBlockHint'),
+					action: { label: t('importFile'), run: () => this.chooseFileFor(el, ctx, source) },
+				});
 				return;
 			}
 			options.filename = this.resolveRelative(options.filename, ctx.sourcePath);
@@ -159,6 +150,13 @@ export default class RichViewPlugin extends Plugin {
 			el.style.setProperty('min-height', `${options.height > 0 ? options.height : 400}px`);
 			// Pass the live settings object so viewers see changes without reload.
 			ctx.addChild(new RichCodeBlock(el, this.app, options, ctx.sourcePath, source, sectionInfo, this.settings, stencilsDir));
+		});
+	}
+
+	/** Asks which file the block should show, then writes `file=` into it (an empty block, or one that names none). */
+	private chooseFileFor(el: HTMLElement, ctx: MarkdownPostProcessorContext, source: string): void {
+		openDiagramFilePicker(this.app, file => {
+			void writeBlockParams(this.app, ctx.sourcePath, ctx.getSectionInfo(el), source, `file=${file.path}`);
 		});
 	}
 
