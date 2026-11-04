@@ -289,6 +289,27 @@ npm run build   # 类型检查 + 生产构建
 
 ---
 
+## Agent Skill
+
+仓库里带了一个 [skill](skills/obsidian-rich-view/SKILL.md)，给 AI 编程助手用（Claude Code、Cursor、Codex、Copilot 等[很多](https://github.com/vercel-labs/skills)）。装好后，它能直接在笔记里嵌入图表或幻灯片，改页码、缩放、高度，或者把代码块指向另一个文件，不用你去查语法。
+
+```bash
+# 交互式选择要装给哪些助手
+npx skills add SdKay/obsidian-rich-view
+
+# 或者装到全局（-g），指定一个助手
+npx skills add SdKay/obsidian-rich-view -g -a claude-code
+
+# 之后更新到新版本
+npx skills update
+```
+
+只会装 skill 文件（三个很小的 Markdown），不会下载插件，也不会把整个仓库拷进去。不加 `-g` 就只装到当前项目。手动安装：把 `skills/obsidian-rich-view` 文件夹复制到你的助手的 skills 目录。
+
+然后对助手说：*"把 system.drawio 嵌进这篇笔记，页面选 Overview"*。
+
+---
+
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=SdKay/obsidian-rich-view&type=Date)](https://star-history.com/#SdKay/obsidian-rich-view&Date)

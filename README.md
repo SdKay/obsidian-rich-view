@@ -289,6 +289,27 @@ Read [CLAUDE.md](CLAUDE.md) first: architecture, how tests are written, how to r
 
 ---
 
+## Agent Skill
+
+A [skill](skills/obsidian-rich-view/SKILL.md) for AI coding agents (Claude Code, Cursor, Codex, Copilot and [many more](https://github.com/vercel-labs/skills)). Once installed, the agent can embed a diagram or deck in a note, switch its page, zoom and height, or point a block at another file, without you looking up the syntax.
+
+```bash
+# pick your agents interactively
+npx skills add SdKay/obsidian-rich-view
+
+# or for all your projects (-g), into one agent
+npx skills add SdKay/obsidian-rich-view -g -a claude-code
+
+# later, to pick up newer versions
+npx skills update
+```
+
+Only the skill files are installed (three small Markdown files), not the plugin or this repo. Leave out `-g` to install into the current project only. By hand: copy the `skills/obsidian-rich-view` folder into your agent's skills folder.
+
+Then ask your agent: *"Embed system.drawio in this note, page Overview"*.
+
+---
+
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=SdKay/obsidian-rich-view&type=Date)](https://star-history.com/#SdKay/obsidian-rich-view&Date)
