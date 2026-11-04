@@ -11,6 +11,7 @@ import type { MatchOptions } from './richSearchApi';
 import type { SearchRequest } from './searchRequest';
 import { markStyle, openedPosition, slideUnits, toSearchResult, uniqueByShape } from './slideMarks';
 import { addKeywordMarks } from './slideKeywordMarks';
+import { replaceMetafiles } from './pptxMetafiles';
 
 /**
  * Paginated-document viewer (PPT). A page flow, not an infinite canvas, so it
@@ -75,7 +76,10 @@ export class SlideViewer extends RichViewer {
 		const stage = this.stageEl;
 		if (!stage) return;
 		try {
-			const viewer = await PptxViewer.open(buffer, stage, {
+			// The library draws no vector EMF/WMF pictures; as SVG they show like any other image.
+			const bytes = await replaceMetafiles(new Uint8Array(buffer));
+			if (this.unloaded || this.stageEl !== stage) return;
+			const viewer = await PptxViewer.open(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer, stage, {
 				zipLimits: RECOMMENDED_ZIP_LIMITS,
 				renderMode: 'slide',
 				fitMode: 'none',
