@@ -9,6 +9,8 @@
         "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
         "lint": "eslint .",
         "test": "vitest run",
+        "lockfile:normalize": "node lockfile-normalize.mjs",
+        "lockfile:check": "node lockfile-normalize.mjs --check",
         "version": "node version-bump.mjs && git add manifest.json versions.json"
     },
     "keywords": [
